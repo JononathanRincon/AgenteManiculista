@@ -1,0 +1,42 @@
+# Blueprint de Render para la DEMO del simulador (sin credenciales de Meta, Google ni Gemini).
+# NO se despliega solo: el despliegue exige la confirmación del usuario (AGENTS.md §6, TASK-61).
+# Campos verificados en https://render.com/docs/blueprint-spec
+#
+# Plan "free": sin disco persistente, se duerme tras 15 min sin tráfico y tarda ~1 min en despertar.
+# Para la demo basta: el simulador reinicia su estado y no guarda datos reales.
+# Para una demo siempre encendida (o producción) cambia a un plan de pago y activa el bloque `disk`
+# (los discos solo existen en servicios de pago); verifica planes y precios vigentes antes de crear.
+services:
+  - type: web
+    name: agente-manicurista-demo
+    runtime: docker
+    plan: free
+    region: oregon
+    numInstances: 1            # el worker único y SQLite exigen una sola instancia
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: "off"   # los despliegues los dispara una persona
+    envVars:
+      - key: ENTORNO
+        value: demo
+      - key: SIMULADOR
+        value: "true"
+      - key: PROVEEDOR_LLM
+        value: none
+      - key: DATABASE_URL
+        value: sqlite:////tmp/demo.db
+      - key: DEMO_RETARDO_CALENDARIO_S
+        value: "1.0"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: PORT
+        value: "8000"
+    # Con un plan de pago, descomenta para conservar la base entre reinicios:
+    # disk:
+    #   name: datos
+    #   mountPath: /data
+    #   sizeGB: 1
+    # y cambia DATABASE_URL a sqlite:////data/agenda.db
