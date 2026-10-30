@@ -14,7 +14,7 @@ import random
 from collections.abc import Callable
 from datetime import datetime, timedelta
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, delete
 
 from app import cola
 from app.cache import CacheDisponibilidad
@@ -22,7 +22,7 @@ from app.config import Config
 from app.disponibilidad import minutos_ocupados
 from app.formato import fecha, hora
 from app.mensajes import texto
-from app.modelos import Conversacion, Reserva, unidad_de_trabajo
+from app.modelos import Conversacion, MensajeProcesado, Reserva, unidad_de_trabajo
 from app.puertos import (
     Calendario,
     CuotaExcedida,
@@ -38,6 +38,7 @@ from app.reservas import (
     completar_reagendar,
     confirmar,
     event_id_para,
+    expirar_pendientes,
     liberar,
     revertir_reagendar,
 )
@@ -48,6 +49,7 @@ MAX_INTENTOS = 5
 TOPE_BACKOFF_S = 64
 JITTER_MAX_S = 1.0
 VENTANA_MENSAJERIA = timedelta(hours=24)
+RETENCION_MENSAJES = timedelta(days=7)
 
 
 def _jitter_aleatorio() -> float:
@@ -115,6 +117,32 @@ class Worker:
         except ErrorCalendario as exc:
             self._reintentar_o_fallar(trabajo, exc)
         return True
+
+    # --- limpieza periódica ---
+    def limpiar(self) -> int:
+        """Expira reservas PENDIENTE vencidas, avisa y borra mensajes procesados viejos."""
+        ahora = self._reloj.ahora()
+        with unidad_de_trabajo(self._engine) as s:
+            expiradas = expirar_pendientes(s, self._config, ahora)
+            s.execute(
+                delete(MensajeProcesado).where(
+                    MensajeProcesado.recibido_en < ahora - RETENCION_MENSAJES
+                )
+            )
+        for reserva in expiradas:
+            self._invalidar(reserva)
+            self._avisar(reserva, "reagendar_fallo" if reserva.reemplaza_a else "cita_expirada")
+        return len(expiradas)
+
+    async def correr_limpieza(self, parar: asyncio.Event, cada_s: float = 60.0) -> None:
+        """Tarea periódica de limpieza (cada 60 s)."""
+        while not parar.is_set():
+            try:
+                await asyncio.to_thread(self.limpiar)
+            except Exception:  # noqa: BLE001 - la tarea nunca debe morir
+                log.exception("limpieza_error_inesperado")
+            with contextlib.suppress(TimeoutError):
+                await asyncio.wait_for(parar.wait(), timeout=cada_s)
 
     # --- ejecución por tipo ---
     def _ejecutar(self, trabajo: cola.Trabajo) -> None:
