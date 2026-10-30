@@ -744,3 +744,21 @@
 - **Reporte de pruebas:** 183 pasaron, 0 fallaron. Cobertura de ramas medida: reservas 100 %, cola 100 %, worker 100 %; total 99 %. Concurrencia: 2 y 50 intentos en paralelo, 0 solapes.
 - **Intentos del bucle interno:** 1/3 en la mayoría; TASK-18 2/3 (precisión al segundo de las fechas).
 - **Estado actualizado:** tasks.md TASK-14 a 22 y 55 `[x]`; Fase 6 `✅`; Fase 7 `⏳`.
+
+## Entrada 16 — 2026-10-30 — Bloque 5 completo: TASK-23 a 29 y 56 (Fase 7)
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code
+- **Fase / tarea:** Fase 7 — Máquina de estados · TASK-23 a TASK-29 y TASK-56
+- **Prompt utilizado (literal):**
+  ```text
+  hagas todos los bloques de una vez, avisame cuando termines
+  ```
+- **Output del agente (resumen):** `app/conversacion.py` (Estado, TRANSICIONES, Contexto persistido, inactividad de 30 min), `app/agente.py` (clase `Agente`: deduplicación por `wa_message_id`, aviso de datos, menú, agendar, domicilio con dirección/zona/recargo/total, mis citas, reagendar, cancelar, atajos de palabras clave y FAQ, gancho opcional para el LLM del Bloque 7), `app/agenda.py` (horas y días con cupo = Calendar ∪ reservas locales), `app/intencion.py` (normalización, palabras clave, FAQ), `config/intenciones.yaml`, `config/faq.yaml`, `app/formato.py`.
+- **Aclaración a SDD §8.1 (a incluir en la v0.4):** el diagrama no permitía elegir otro día desde ELIGIENDO_HORA ni elegir el nuevo día al reagendar; se agregaron las transiciones ELIGIENDO_HORA→ELIGIENDO_DIA, GESTIONANDO_CITA→ELIGIENDO_DIA y la vuelta a MENU desde pasos intermedios. CONFIRMANDO sigue alcanzable únicamente desde ELIGIENDO_HORA (probado).
+- **Desviaciones:** el flujo completo (domicilio y gestión incluidos) se escribió junto en TASK-24; TASK-25 y TASK-26 se cerraron juntas con sus pruebas; el cálculo de disponibilidad se hace fuera de la transacción de escritura para no retener el candado de SQLite durante llamadas de red.
+- **Defecto encontrado por las pruebas de ramas:** un id de botón sin dos puntos (`"hora"`) lanzaba IndexError; ahora se analiza con `partition`.
+- **Dependencias agregadas:** ninguna.
+- **Reporte de pruebas:** 250 pruebas de unidad y e2e pasaron (suite completa: 330+), 0 fallaron. Cobertura de ramas medida: agente 100 %, conversacion 100 %, agenda 100 %, intencion 100 %, formato 100 %.
+- **Intentos del bucle interno:** 1/3 por tarea (más una corrección de id).
+- **Estado actualizado:** tasks.md TASK-23 a 29 y 56 `[x]`; Fase 7 `✅`; Fase 8 `⏳`.
+- **Pendiente derivado:** la prueba e2e comprueba que `google.genai` no esté en `sys.modules`; cuando el Bloque 7 importe Gemini habrá que aislarla en un subproceso.

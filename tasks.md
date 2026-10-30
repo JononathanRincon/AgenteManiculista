@@ -372,7 +372,7 @@
   - Test: `pytest tests/e2e/test_agendar_sin_llm.py -q`
   - Hecho cuando: la cita queda CONFIRMADA con evento en el calendario falso sin ninguna llamada a un LLM.
 
-- [ ] **TASK-56** · Revisión del Bloque 5 y cobertura medida
+- [x] **TASK-56** · Revisión del Bloque 5 y cobertura medida
   - Objetivo: cerrar el bloque.
   - Trazabilidad: NFR-CAL-01 · Plan: 7.7
   - Diseño: design.md §B5.5
