@@ -385,7 +385,7 @@
 ## Bloque 6 — Simulador (Fase 8)
 *Skills:* `frontend-ui-engineering`, `browser-testing-with-devtools`, `test-driven-development`
 
-- [ ] **TASK-30** · Crear el transporte simulado y el calendario simulado en vivo
+- [x] **TASK-30** · Crear el transporte simulado y el calendario simulado en vivo
   - Objetivo: mismas reglas de conversación, distinto transporte; cambios del calendario emitidos.
   - Trazabilidad: US-12, EARS-SIM-02, EARS-SIM-03 · Plan: 8.1
   - Diseño: design.md §B6.2, §B6.4
