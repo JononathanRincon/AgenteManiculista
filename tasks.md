@@ -488,7 +488,7 @@
   - Test: `pytest tests/unit/test_intencion_orquestador.py -q`
   - Hecho cuando: confianza 0.69 cae al menú, 0.70 pasa, y el % sin LLM queda registrado.
 
-- [ ] **TASK-39** · Probar que el prompt no contiene datos personales
+- [x] **TASK-39** · Probar que el prompt no contiene datos personales
   - Objetivo: test de contrato sobre `construir_prompt`.
   - Trazabilidad: US-13, EARS-INT-08, NFR-PRI-01 · Plan: 9.5
   - Diseño: design.md §B7.4

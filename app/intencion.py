@@ -166,7 +166,8 @@ _CORREOS = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 
 def redactar(texto: str) -> str:
     """Quita teléfonos y correos que la clienta escriba dentro del mensaje y limita el largo."""
-    sin_correos = _CORREOS.sub("[correo]", texto)
+    sin_marcas = texto.replace("<", " ").replace(">", " ")  # no puede cerrar la marca <mensaje>
+    sin_correos = _CORREOS.sub("[correo]", sin_marcas)
     sin_numeros = _NUMEROS.sub("[número]", sin_correos)
     return " ".join(sin_numeros.split())[:MAX_TEXTO_LLM]
 
