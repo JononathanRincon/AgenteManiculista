@@ -685,3 +685,22 @@
 - **Intentos del bucle interno:** TASK-07 2/3 (la transacción de SQLite empieza con el primer SQL, no con `add`; se corrigió la prueba con `flush`); resto 1/3.
 - **Estado actualizado:** tasks.md TASK-05 a 08 y 52 `[x]`; FASE_TRACKING Fase 3 `✅`.
 - **Pendientes:** el shell del entorno falla con heredocs que contienen comillas; los archivos se escriben con la herramienta Write.
+
+## Entrada 13 — 2026-10-30 — Bloque 2 completo: TASK-09, 10, 11 y 53 (Fase 4)
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code
+- **Fase / tarea:** Fase 4 — Disponibilidad · TASK-09 a TASK-11 y TASK-53
+- **Prompt utilizado (literal):**
+  ```text
+  hagas todos los bloques de una vez, avisame cuando termines
+  ```
+- **Output del agente (resumen):** `app/disponibilidad.py` (funciones puras `bloques_ocupados`, `horarios_ofrecibles`, `minutos_ocupados`), `app/puertos.py` (Protocol `Calendario`, `Mensajeria`, `Reloj`; tipos `Intervalo`, `EventoNuevo`, `EventoCita`, `EventoCalendario`, `ResultadoListado`; errores `ErrorSyncTokenExpirado`, `ErrorTransitorio`, `CuotaExcedida`, `ErrorPermanente`), `app/simulador/calendario_falso.py` (calendario en memoria con sync tokens, 410, 409, fallos programables, retardo, oyentes y contadores). `Modalidad` quedó en `app/config.py`. `ProveedorLLM` se define en el Bloque 7 (depende de `Intencion`).
+- **Archivos:** app/disponibilidad.py, app/puertos.py, app/simulador/__init__.py, app/simulador/calendario_falso.py, tests/unit/test_disponibilidad.py, tests/unit/test_calendario_falso.py.
+- **Desviación registrada:** TASK-09 y TASK-10 se implementaron y fusionaron juntas (mismo módulo y mismo archivo de pruebas), a diferencia de la regla de una tarea por rama. Ambas tienen sus pruebas propias dentro de `test_disponibilidad.py`. También se hizo un commit de documentación directo en `develop` (marcador de FASE_TRACKING).
+- **Patrones:** funciones puras sin I/O; hexagonal (puertos síncronos, el código asíncrono los invoca con `asyncio.to_thread`); doble de pruebas con fallos programables.
+- **Dependencias agregadas:** ninguna.
+- **Reporte de pruebas:** 72 pasaron, 0 fallaron. Cobertura de ramas medida: disponibilidad 100 %, puertos 100 %, calendario_falso 100 %; total 99 %.
+- **Casos:** 45→2, 75→3, 150→6, 30→2 bloques; domicilio suma desplazamiento; cierre exacto; el margen no cuenta para el cierre; anticipación 2 h; ventana 21 días; domingo; máximo 10; solape de servicio largo con cita corta; apertura no alineada.
+- **Hallazgos de la revisión (TASK-53, autorrevisión):** sin críticos ni altos. Observación baja: `horarios_ofrecibles` recorre hasta el cierre aunque `limite` se alcance antes (corta por `limite`, correcto).
+- **Intentos del bucle interno:** 1/3 por tarea (más un ajuste de lint).
+- **Estado actualizado:** tasks.md TASK-09, 10, 11, 53 `[x]`; Fase 4 `✅`; Fase 5 `⏳`.

@@ -153,7 +153,7 @@
   - Test: `pytest tests/unit/test_calendario_falso.py -q`
   - Hecho cuando: el falso cuenta llamadas, simula 410/429 y respeta `id` de evento duplicado (409).
 
-- [ ] **TASK-53** · Revisión del Bloque 2 y cobertura medida
+- [x] **TASK-53** · Revisión del Bloque 2 y cobertura medida
   - Objetivo: cerrar el bloque con revisión y 100 % de ramas en `disponibilidad`.
   - Trazabilidad: NFR-CAL-01 · Plan: 4.4
   - Diseño: design.md §B2.5
