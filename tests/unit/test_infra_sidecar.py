@@ -26,9 +26,21 @@ def test_el_sidecar_no_publica_puertos_y_guarda_la_sesion_en_un_volumen() -> Non
 
 
 def test_los_secretos_no_estan_escritos_en_el_compose() -> None:
-    texto = (RAIZ / "docker-compose.yml").read_text(encoding="utf-8")
-    for nombre in ("SIDECAR_TOKEN", "WEBHOOK_SECRET", "ADMIN_TOKEN"):
-        assert f"{nombre}:" not in texto  # llegan por el archivo .env, nunca versionado
+    sidecar = _compose()["services"]["sidecar"]["environment"]
+    for nombre in ("SIDECAR_TOKEN", "WEBHOOK_SECRET"):
+        assert sidecar[nombre].startswith("${")  # solo se referencian; el valor vive en .env
+    assert "ADMIN_TOKEN" not in sidecar  # el sidecar no necesita el token administrativo
+
+
+def test_el_sidecar_no_recibe_todo_el_env() -> None:
+    sidecar = _compose()["services"]["sidecar"]
+    assert "env_file" not in sidecar  # mínimo privilegio: sin GEMINI_API_KEY, Google ni ADMIN_TOKEN
+    assert set(sidecar["environment"]) == {
+        "SIDECAR_TOKEN",
+        "WEBHOOK_SECRET",
+        "BACKEND_WEBHOOK_URL",
+        "AUTH_DIR",
+    }
 
 
 def test_el_backend_apunta_al_sidecar_por_la_red_interna() -> None:

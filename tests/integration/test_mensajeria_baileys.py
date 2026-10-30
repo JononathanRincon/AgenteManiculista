@@ -227,3 +227,25 @@ def test_se_recuerdan_solo_los_ultimos_500_ids(
         m._enviar(TEL, "t", None)  # noqa: SLF001
     assert m.fue_emitido("X0") is False
     assert m.fue_emitido("X519") is True
+
+
+def test_durante_la_pausa_humana_los_avisos_no_se_envian(
+    mensajeria: tuple[MensajeriaBaileys, ServidorFalso, ControlHumano, Engine],
+) -> None:
+    m, servidor, control, _ = mensajeria
+    control.pausar(TEL, AHORA)
+    m.enviar_texto(TEL, "Tu cita fue confirmada")
+    assert servidor.peticiones == []  # la dueña está atendiendo a mano
+    control.reanudar(TEL)
+    m.enviar_texto(TEL, "Tu cita fue confirmada")
+    assert _rutas(servidor)[-1] == "/enviar"
+
+
+def test_los_candados_en_desuso_se_podan(
+    mensajeria: tuple[MensajeriaBaileys, ServidorFalso, ControlHumano, Engine],
+) -> None:
+    m, _, _, _ = mensajeria
+    for n in range(1100):
+        m._candados[f"57{n:010d}"] = threading.Lock()  # noqa: SLF001
+    m._enviar(TEL, "hola", None)  # noqa: SLF001
+    assert len(m._candados) < 5  # noqa: SLF001

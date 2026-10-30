@@ -663,7 +663,7 @@
   - Test: `docker compose build`
   - Hecho cuando: ambas imágenes construyen, corren como no root y el volumen de sesión no se versiona.
 
-- [ ] **TASK-72** · Revisión del Bloque 8 (transporte Baileys) y `/health`
+- [x] **TASK-72** · Revisión del Bloque 8 (transporte Baileys) y `/health`
   - Objetivo: cerrar el bloque con revisión de seguridad y el estado de WhatsApp en `/health`.
   - Trazabilidad: NFR-CAL-01, NFR-SEG-01, NFR-ANT-01 · Plan: 10.8
   - Diseño: design.md §B8.5

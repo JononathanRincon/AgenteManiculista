@@ -28,7 +28,7 @@ function montar(opciones = {}) {
     useMultiFileAuthState: async (dir) => ({ state: { dir }, saveCreds: async () => (llamadas.creds += 1) }),
     fetchLatestBaileysVersion: async () => ({ version: [2, 3000, 1] }),
     Browsers: { macOS: (n) => ['Mac OS', n, '14.4.1'] },
-    DisconnectReason: { loggedOut: 401 },
+    DisconnectReason: { loggedOut: 401, connectionReplaced: 440, forbidden: 403 },
   };
   const eventos = [];
   const programados = [];
@@ -245,4 +245,43 @@ test('se puede entregar un logger propio a Baileys (nivel warn en producción)',
   const t = montar({ loggerBaileys: silencioso });
   await t.conexion.iniciar();
   assert.equal(t.llamadas.configs[0].logger, silencioso);
+});
+
+for (const [codigo, estado, evento] of [
+  [440, 'reemplazada', 'sesion_reemplazada'],
+  [403, 'prohibida', 'numero_restringido'],
+]) {
+  test(`cierre ${codigo}: se detiene, avisa y no reconecta (insistir agravaría la sanción)`, async () => {
+    const fatales = [];
+    const t = montar({ log: { ...log, fatal: (d) => fatales.push(d) } });
+    await t.conexion.iniciar();
+    t.ev.emit('connection.update', { connection: 'close', lastDisconnect: { error: { output: { statusCode: codigo } } } });
+    assert.equal(t.conexion.estado().conexion, estado);
+    assert.deepEqual(t.eventos.at(-1), { tipo: 'estado', conexion: estado });
+    assert.equal(t.programados.length, 0);
+    assert.equal(fatales[0].evento, evento);
+  });
+}
+
+test('tras muchos fallos seguidos la espera pasa a 15 minutos', async () => {
+  const t = montar();
+  await t.conexion.iniciar();
+  const cierre = { connection: 'close', lastDisconnect: { error: { output: { statusCode: 500 } } } };
+  for (let i = 0; i < 10; i += 1) t.ev.emit('connection.update', cierre);
+  assert.equal(t.programados.at(-1).ms, 900000);
+});
+
+test('el QR no se imprime por defecto en los logs del contenedor', async () => {
+  const impresos = [];
+  const original = console.log;
+  console.log = (...a) => impresos.push(a.join(' '));
+  try {
+    const t = montar({ mostrarQr: () => {} });
+    await t.conexion.iniciar();
+    t.ev.emit('connection.update', { qr: 'CODIGO-SECRETO-DE-VINCULACION' });
+    assert.equal(t.conexion.estado().qr_disponible, true); // sigue disponible solo para /qr
+  } finally {
+    console.log = original;
+  }
+  assert.equal(impresos.some((l) => l.includes('CODIGO-SECRETO')), false);
 });

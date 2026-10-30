@@ -99,12 +99,19 @@ export class Conexion {
 
   #alCerrarse(lastDisconnect) {
     const codigo = lastDisconnect?.error?.output?.statusCode;
-    if (codigo === this.baileys.DisconnectReason.loggedOut) {
-      this.conexion = 'loggedOut';
+    const razon = this.baileys.DisconnectReason;
+    const terminales = new Map([
+      [razon.loggedOut, ['loggedOut', 'sesion_cerrada', 'volver a vincular con el QR']],
+      [razon.connectionReplaced, ['reemplazada', 'sesion_reemplazada', 'hay otra instancia con la misma sesión']],
+      [razon.forbidden, ['prohibida', 'numero_restringido', 'WhatsApp rechazó la sesión: revisar el número']],
+    ]);
+    if (terminales.has(codigo)) {
+      const [estado, evento, accion] = terminales.get(codigo);
+      this.conexion = estado;
       this.qr = null;
-      this.log.fatal({ evento: 'sesion_cerrada', accion: 'volver a vincular con el QR' });
-      this.#emitir({ tipo: 'estado', conexion: 'loggedOut' });
-      return; // no se reconecta: haría falta un QR nuevo
+      this.log.fatal({ evento, accion });
+      this.#emitir({ tipo: 'estado', conexion: estado });
+      return; // reconectar no arregla nada y puede agravar una sanción
     }
     this.conexion = 'close';
     this.#emitir({ tipo: 'estado', conexion: 'close' });

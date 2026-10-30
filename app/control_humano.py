@@ -23,12 +23,21 @@ class ControlHumano:
         self._cfg = negocio.anti_ban
 
     # --- pausa por intervención humana ---
-    def pausar(self, telefono: str, ahora: datetime) -> bool:
-        """Calla al bot con esta clienta; solo si ella ya escribió (no crea filas nuevas)."""
+    def pausar(self, telefono: str, ahora: datetime, *, crear: bool = False) -> bool:
+        """Calla al bot con esta clienta; solo si ella ya escribió.
+
+        No crea filas para chats personales de la dueña; `crear=True` se usa únicamente cuando hay
+        un mensaje de la clienta esperando respuesta (su primera conversación aún sin fila).
+        """
         with unidad_de_trabajo(self._engine) as s:
             conversacion = s.get(Conversacion, telefono)
             if conversacion is None:
-                return False
+                if not crear:
+                    return False
+                conversacion = Conversacion(
+                    telefono=telefono, estado="INICIO", actualizado_en=ahora
+                )
+                s.add(conversacion)
             conversacion.pausa_humana_hasta = ahora + self._pausa
             return True
 

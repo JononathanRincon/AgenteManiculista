@@ -24,6 +24,7 @@ from app.agente import Agente
 from app.config import Config
 from app.control_humano import ControlHumano
 from app.conversacion import Entrante, Saliente
+from app.limite_tasa import LimiteTasa
 from app.logs import nuevo_correlation_id
 from app.menus_numericos import componer, guardar_menu, resolver_entrada
 from app.modelos import MensajeProcesado, unidad_de_trabajo
@@ -34,11 +35,25 @@ log = logging.getLogger("webhook")
 SUFIJO_INDIVIDUAL = "@s.whatsapp.net"
 
 
-def verificar_firma(cuerpo: bytes, cabecera: str | None, secreto: str) -> bool:
-    """HMAC-SHA256 del cuerpo crudo, comparado en tiempo constante (EARS-WA-02)."""
-    if not secreto or not cabecera or not cabecera.startswith("sha256="):
+LIMITE_CUERPO = 16 * 1024
+TOLERANCIA_MARCA_S = 300
+
+
+def verificar_firma(
+    cuerpo: bytes, cabecera: str | None, secreto: str, marca: str | None, ahora_s: float
+) -> bool:
+    """HMAC-SHA256 de `marca.cuerpo` en tiempo constante; rechaza marcas viejas (EARS-WA-02).
+
+    La marca de tiempo impide repetir un evento firmado capturado (`propio`, `estado`).
+    """
+    if not secreto or not cabecera or not marca or not cabecera.startswith("sha256="):
         return False
-    esperado = hmac.new(secreto.encode(), cuerpo, hashlib.sha256).hexdigest()
+    try:
+        if abs(ahora_s - float(marca)) > TOLERANCIA_MARCA_S:
+            return False
+    except ValueError:
+        return False
+    esperado = hmac.new(secreto.encode(), f"{marca}.".encode() + cuerpo, hashlib.sha256).hexdigest()
     return hmac.compare_digest(esperado, cabecera.removeprefix("sha256=").lower())
 
 
@@ -73,7 +88,7 @@ class EventoPropio(_Evento):
 
 class EventoEstado(_Evento):
     tipo: Literal["estado"]
-    conexion: Literal["open", "connecting", "close", "loggedOut"]
+    conexion: Literal["open", "connecting", "close", "loggedOut", "reemplazada", "prohibida"]
 
 
 Evento = Annotated[EventoMensaje | EventoPropio | EventoEstado, Field(discriminator="tipo")]
@@ -112,6 +127,7 @@ class Pasarela:
         ventana = config.negocio.anti_ban.debounce_segundos if ventana_s is None else ventana_s
         self._acumulador = Acumulador(self._responder, ventana)
         self._tareas: set[asyncio.Task[None]] = set()
+        self._limite_entrante = LimiteTasa(maximo=60, ventana_s=60)
         self.estado_conexion: str = "desconocido"
         self.estado_desde: datetime | None = None
 
@@ -149,12 +165,16 @@ class Pasarela:
         if telefono is None:
             return "ignorado_chat"
         ahora = self._reloj.ahora()
-        if not self._registrar(evento.id, ahora):
+        if not self._limite_entrante.permitir(telefono):  # ráfagas: se descartan sin procesar
+            return "limitado"
+        if not await asyncio.to_thread(self._registrar, evento.id, ahora):
             return "duplicado"
-        if self._control.esta_pausado(telefono, ahora):
+        if await asyncio.to_thread(self._control.esta_pausado, telefono, ahora):
             return "pausado"
         texto = evento.texto if evento.tipo_mensaje == "texto" else None
-        id_interactivo = self._mapear_numero(telefono, texto, ahora) if texto else None
+        id_interactivo = (
+            await asyncio.to_thread(self._mapear_numero, telefono, texto, ahora) if texto else None
+        )
         marca = datetime.fromtimestamp(evento.ts, UTC) if evento.ts else ahora
         entrante = Entrante(
             telefono=telefono,
@@ -190,12 +210,17 @@ class Pasarela:
         if mensaje is None:
             return
         ahora = self._reloj.ahora()
+        if self._control.esta_pausado(
+            entrante.telefono, ahora
+        ):  # la dueña intervino mientras tanto
+            log.info("envio_descartado", extra={"motivo": "pausa_humana"})
+            return
         if not self._control.autorizar_envio(entrante.telefono, ahora):
             log.warning("envio_descartado", extra={"motivo": "rate_limit_o_sin_conversacion"})
             return
-        with unidad_de_trabajo(self._engine) as s:
-            guardar_menu(s, entrante.telefono, mensaje.opciones, ahora)
         self._emisor.responder(entrante.telefono, salidas, entrante.wa_message_id)
+        with unidad_de_trabajo(self._engine) as s:  # solo se recuerda el menú que sí se envió
+            guardar_menu(s, entrante.telefono, mensaje.opciones, ahora)
 
     # --- eventos propios y de estado ---
     def _propio(self, evento: EventoPropio) -> str:
@@ -204,7 +229,10 @@ class Pasarela:
             return "ignorado_chat"
         if self._emisor.fue_emitido(evento.id):
             return "emitido_por_el_bot"
-        if self._control.pausar(telefono, self._reloj.ahora()):
+        pendiente = self._acumulador.descartar(
+            telefono
+        )  # lo que esperaba respuesta ya no se responde
+        if self._control.pausar(telefono, self._reloj.ahora(), crear=pendiente):
             log.info("pausa_por_intervencion_humana", extra={"telefono": telefono})
             return "pausado_por_humano"
         return "sin_conversacion"
@@ -219,14 +247,34 @@ class Pasarela:
         return f"estado_{evento.conexion}"
 
 
+async def _leer_acotado(request: Request) -> bytes:
+    """Lee el cuerpo sin pasar de LIMITE_CUERPO (413 si lo supera), antes de verificar la firma."""
+    declarado = request.headers.get("content-length")
+    if declarado is not None and declarado.isdigit() and int(declarado) > LIMITE_CUERPO:
+        raise HTTPException(status_code=413, detail="cuerpo demasiado grande")
+    cuerpo = bytearray()
+    async for trozo in request.stream():
+        cuerpo.extend(trozo)
+        if len(cuerpo) > LIMITE_CUERPO:
+            raise HTTPException(status_code=413, detail="cuerpo demasiado grande")
+    return bytes(cuerpo)
+
+
 def crear_router_whatsapp() -> APIRouter:
     router = APIRouter()
 
     @router.post("/webhook/whatsapp")
     async def recibir(request: Request) -> dict[str, bool]:
-        cuerpo = await request.body()  # crudo: la firma se verifica antes de interpretar nada
+        cuerpo = await _leer_acotado(request)  # crudo y con tope: sin firma no se acepta volumen
         secreto = request.app.state.webhook_secreto
-        if not verificar_firma(cuerpo, request.headers.get("x-firma"), secreto):
+        firma_valida = verificar_firma(
+            cuerpo,
+            request.headers.get("x-firma"),
+            secreto,
+            request.headers.get("x-marca"),
+            datetime.now(UTC).timestamp(),
+        )
+        if not firma_valida:
             raise HTTPException(status_code=403, detail="firma inválida")
         try:
             evento = _ADAPTADOR.validate_json(cuerpo)

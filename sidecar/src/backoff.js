@@ -1,8 +1,16 @@
 // Reconexión con backoff exponencial: 2, 4, 8, 16, 32 y luego 60 s (tope), más jitter de 0 a 1 s.
 export const TOPE_SEGUNDOS = 60;
+export const FALLOS_PARA_ESPERA_LARGA = 10;
+export const ESPERA_LARGA_SEGUNDOS = 15 * 60;
 
-/** Espera en milisegundos antes del intento `intento` (1, 2, 3...). */
+/**
+ * Espera en milisegundos antes del intento `intento` (1, 2, 3...). Tras 10 fallos seguidos pasa a
+ * 15 minutos: insistir cada minuto contra un número restringido solo empeora la sanción.
+ */
 export function esperaReconexionMs(intento, azar = Math.random) {
-  const base = Math.min(TOPE_SEGUNDOS, 2 ** Math.max(1, intento));
+  const base =
+    intento >= FALLOS_PARA_ESPERA_LARGA
+      ? ESPERA_LARGA_SEGUNDOS
+      : Math.min(TOPE_SEGUNDOS, 2 ** Math.max(1, intento));
   return Math.round((base + azar()) * 1000);
 }

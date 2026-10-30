@@ -21,6 +21,8 @@ CLAVES = {
     "modo_degradado",
     "canal_expira_en",
     "cola_pausada_hasta",
+    "whatsapp_estado",
+    "whatsapp_desde",
 }
 
 
@@ -63,14 +65,28 @@ def test_health_refleja_la_actividad_y_no_contiene_datos_personales(cliente: Tes
     assert dias is not None
 
 
-def test_health_cuenta_la_cola_y_los_fallidos(cliente: TestClient) -> None:
-    demo = cliente.app.state.demo  # type: ignore[attr-defined]
-    cliente.post("/demo/api/carrera", json={})
-    assert cliente.get("/health").json()["cola_profundidad"] == 1
-    demo.worker.procesar_uno()
-    datos = cliente.get("/health").json()
-    assert datos["cola_profundidad"] == 0
-    assert datos["cache_tasa_acierto"] > 0
+def test_health_cuenta_la_cola_y_los_fallidos(tmp_path: Path, cfg: Config) -> None:
+    from app.cola import encolar, fallar
+    from app.modelos import unidad_de_trabajo
+
+    configurar(None)
+    ajustes = Settings(_env_file=None, database_url=f"sqlite:///{tmp_path / 'q.db'}")  # type: ignore[call-arg]
+    with TestClient(crear_app(ajustes, cfg, RelojFalso(AHORA))) as c:  # sin worker en marcha
+        engine = c.app.state.engine  # type: ignore[attr-defined]
+        with unidad_de_trabajo(engine) as s:
+            trabajo = encolar(
+                s,
+                calendario_id=cfg.negocio.calendario_id,
+                tipo="CREAR",
+                payload={},
+                clave="k",
+                reserva_id=None,
+                ahora=AHORA,
+            )
+        assert c.get("/health").json()["cola_profundidad"] == 1
+        fallar(engine, trabajo.id, AHORA, "prueba")
+        datos = c.get("/health").json()
+        assert (datos["cola_profundidad"], datos["trabajos_fallidos"]) == (0, 1)
 
 
 def test_health_incluye_el_id_de_correlacion(cliente: TestClient) -> None:

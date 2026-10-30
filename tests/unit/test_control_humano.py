@@ -110,3 +110,12 @@ def test_limpiar_borra_lo_que_ya_salio_de_la_ventana(engine: Engine, cfg: Config
     control = _control(engine, cfg)
     control.autorizar_envio(TEL, AHORA)
     assert control.limpiar(AHORA + timedelta(minutes=10)) == 1
+
+
+def test_pausar_con_crear_registra_a_una_clienta_que_aun_no_tenia_conversacion(
+    engine: Engine, cfg: Config
+) -> None:
+    control = _control(engine, cfg)
+    assert control.pausar("573004443322", AHORA) is False
+    assert control.pausar("573004443322", AHORA, crear=True) is True
+    assert control.esta_pausado("573004443322", AHORA + timedelta(minutes=5)) is True

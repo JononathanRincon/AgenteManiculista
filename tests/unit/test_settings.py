@@ -79,3 +79,14 @@ def test_en_produccion_gemini_exige_el_tier_de_pago(monkeypatch: pytest.MonkeyPa
     monkeypatch.setenv("ENTORNO", "demo")
     monkeypatch.setenv("GEMINI_TIER", "free")
     assert Settings(_env_file=None).gemini_tier == "free"  # type: ignore[call-arg]
+
+
+@pytest.mark.parametrize("variable", ["SIDECAR_TOKEN", "WEBHOOK_SECRET", "ADMIN_TOKEN"])
+def test_los_secretos_del_transporte_exigen_32_caracteres(
+    monkeypatch: pytest.MonkeyPatch, variable: str
+) -> None:
+    monkeypatch.setenv(variable, "x" * 31)
+    with pytest.raises(ValidationError, match="32 caracteres"):
+        Settings(_env_file=None)  # type: ignore[call-arg]
+    monkeypatch.setenv(variable, "x" * 32)
+    assert Settings(_env_file=None) is not None  # type: ignore[call-arg]

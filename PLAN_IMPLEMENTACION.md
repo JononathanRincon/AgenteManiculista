@@ -128,14 +128,14 @@
 
 ### Fase 10 — Integración WhatsApp (Baileys, v0.4) y observabilidad (Bloque 8)
 *Skills:* `source-driven-development`, `security-and-hardening`, `observability-and-instrumentation`
-- [ ] **10.1** Verificación GET y firma HMAC
-- [ ] **10.2** POST con 200 inmediato, background y deduplicación
-- [ ] **10.3** Cliente Graph con reintentos
-- [ ] **10.4** `/health` y logging JSON enmascarado
-- [ ] **10.5** Revisión del bloque
-- [ ] **10.6** (v0.4, ADR-009) Transporte Baileys en Python: humanización, menús numerados, debounce, handoff humano, rate limit, webhook del sidecar y adaptador
-- [ ] **10.7** (v0.4, ADR-009) Sidecar Node.js con Baileys y su contenedor
-- [ ] **10.8** (v0.4, ADR-009) Revisión del Bloque 8 con Baileys
+- [x] **10.1** Verificación GET y firma HMAC
+- [x] **10.2** POST con 200 inmediato, background y deduplicación
+- [x] **10.3** Cliente Graph con reintentos
+- [x] **10.4** `/health` y logging JSON enmascarado
+- [x] **10.5** Revisión del bloque
+- [x] **10.6** (v0.4, ADR-009) Transporte Baileys en Python: humanización, menús numerados, debounce, handoff humano, rate limit, webhook del sidecar y adaptador
+- [x] **10.7** (v0.4, ADR-009) Sidecar Node.js con Baileys y su contenedor
+- [x] **10.8** (v0.4, ADR-009) Revisión del Bloque 8 con Baileys
 
 ### Fase 11 — Calendar real y push (Bloque 9)
 *Skills:* `source-driven-development`, `security-and-hardening`, `test-driven-development`

@@ -20,6 +20,7 @@ from pydantic import (
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 Modalidad = Literal["local", "domicilio"]
+MIN_SECRETO = 32
 DIAS = ("lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo")
 
 
@@ -235,6 +236,13 @@ class Settings(BaseSettings):
     calendar_webhook_url: str | None = None
     calendar_channel_token: SecretStr | None = None
     demo_retardo_calendario_s: Annotated[float, Field(ge=0, le=5)] = 0.0
+
+    @field_validator("sidecar_token", "webhook_secret", "admin_token")
+    @classmethod
+    def _secretos_largos(cls, valor: SecretStr | None) -> SecretStr | None:
+        if valor is not None and len(valor.get_secret_value()) < MIN_SECRETO:
+            raise ValueError(f"debe tener al menos {MIN_SECRETO} caracteres (usa un valor al azar)")
+        return valor
 
     @model_validator(mode="after")
     def _gemini_requiere_clave(self) -> Self:

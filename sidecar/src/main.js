@@ -26,11 +26,21 @@ function requerida(nombre) {
 }
 
 const log = crearLog();
-const token = requerida('SIDECAR_TOKEN');
+
+function secreto(nombre) {
+  const valor = requerida(nombre);
+  if (valor.length < 32) {
+    console.error(JSON.stringify({ nivel: 'CRITICAL', evento: 'secreto_corto', variable: nombre }));
+    process.exit(1);
+  }
+  return valor;
+}
+
+const token = secreto('SIDECAR_TOKEN');
 const baileys = { ...baileysModulo, makeWASocket: baileysModulo.default };
 const enviarEvento = crearEmisorEventos({
   url: requerida('BACKEND_WEBHOOK_URL'),
-  secreto: requerida('WEBHOOK_SECRET'),
+  secreto: secreto('WEBHOOK_SECRET'),
   log,
 });
 const conexion = new Conexion({
@@ -38,8 +48,16 @@ const conexion = new Conexion({
   authDir: process.env.AUTH_DIR ?? '/data/baileys_auth',
   enviarEvento,
   log,
-  // Baileys en nivel warn: sus trazas de nivel info incluyen detalles del protocolo
-  loggerBaileys: pino({ level: 'warn' }),
+  // El QR da control de la cuenta: no va a los logs salvo desarrollo (SHOW_QR_STDOUT=true)
+  mostrarQr: process.env.SHOW_QR_STDOUT === 'true' ? undefined : () => {},
+  // Baileys en error y con redacción: sus trazas pueden traer JIDs (teléfonos completos)
+  loggerBaileys: pino({
+    level: 'error',
+    redact: {
+      paths: ['key.remoteJid', 'key.participant', 'node', '*.remoteJid', '*.participant', 'err.stack'],
+      censor: '[oculto]',
+    },
+  }),
 });
 const servidor = crearServidor({ conexion, token, log });
 
