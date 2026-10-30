@@ -1,0 +1,4 @@
+# Preguntas frecuentes por palabras clave. "respuesta" es una clave de config/mensajes.yaml.
+faq:
+  - {palabras: [pago, pagos, pagar, transferencia, efectivo, nequi, daviplata, tarjeta], respuesta: faq_pagos}
+  - {palabras: [cuanto demora, cuanto dura, cuanto tarda, duracion], respuesta: faq_demora}

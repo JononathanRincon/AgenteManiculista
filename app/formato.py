@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, time
 
 from app.config import Negocio
 from app.mensajes import texto
@@ -18,6 +18,12 @@ def hora(instante: datetime, negocio: Negocio) -> str:
     local = instante.astimezone(negocio.zona)
     sufijo = texto("hora_pm") if local.hour >= 12 else texto("hora_am")
     return f"{local.hour % 12 or 12}:{local.minute:02d} {sufijo}"
+
+
+def hora_reloj(valor: time) -> str:
+    """Hora de pared (apertura/cierre) como '8:00 a. m.'."""
+    sufijo = texto("hora_pm") if valor.hour >= 12 else texto("hora_am")
+    return f"{valor.hour % 12 or 12}:{valor.minute:02d} {sufijo}"
 
 
 def fecha(instante: datetime, negocio: Negocio) -> str:
