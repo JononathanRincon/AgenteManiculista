@@ -458,7 +458,7 @@
   - Test: `pytest tests/unit/test_intencion_esquema.py -q`
   - Hecho cuando: campo extra, fecha imposible o servicio inexistente son rechazados.
 
-- [ ] **TASK-36** · Definir el puerto `ProveedorLLM` y el proveedor `none`
+- [x] **TASK-36** · Definir el puerto `ProveedorLLM` y el proveedor `none`
   - Objetivo: proveedor configurable por entorno; `none` siempre devuelve `None`.
   - Trazabilidad: US-11, EARS-INT-05 · Plan: 9.2
   - Diseño: design.md §B7.2
