@@ -279,7 +279,7 @@
   - Test: `pytest tests/integration/test_reagendar.py -q`
   - Hecho cuando: ante fallo al crear o al eliminar, la clienta conserva su cita original.
 
-- [ ] **TASK-22** · Consultar citas futuras por teléfono y aplicar el límite por clienta
+- [x] **TASK-22** · Consultar citas futuras por teléfono y aplicar el límite por clienta
   - Objetivo: listar citas propias y respetar `max_citas_futuras_por_clienta`.
   - Trazabilidad: US-04, US-05, EARS-RES-09, EARS-CON-07, EC-19 · Plan: 6.5
   - Diseño: design.md §B4.2, §B4.4
