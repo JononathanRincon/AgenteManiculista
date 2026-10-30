@@ -11,6 +11,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import Engine
 
 from app.config import Config, Settings, cargar_config
 from app.limite_tasa import LimiteTasa
@@ -21,6 +22,7 @@ from app.puertos import Reloj
 from app.salud import construir_salud
 from app.simulador.demo import Demo
 from app.simulador.rutas import ESTATICOS, crear_router
+from app.webhook import Pasarela, crear_router_whatsapp
 
 DIRECTORIO_CONFIG = Path(__file__).resolve().parents[1] / "config"
 CABECERAS_DEMO = {
@@ -44,50 +46,25 @@ def verificar_un_solo_proceso() -> None:
         raise MasDeUnProceso("WEB_CONCURRENCY > 1: ejecuta un solo proceso (--workers 1)")
 
 
-def crear_app(
-    settings: Settings | None = None,
-    config: Config | None = None,
-    reloj: Reloj | None = None,
-) -> FastAPI:
-    """Construye la aplicación; las rutas de /demo solo existen con SIMULADOR=true."""
-    ajustes = settings or Settings()
-    negocio = config or cargar_config(DIRECTORIO_CONFIG)
+def _montar_demo(app: FastAPI) -> None:
+    """Rutas, archivos estáticos y cabeceras de seguridad de /demo (solo con SIMULADOR=true)."""
+    app.state.limite_demo = LimiteTasa(maximo=300, ventana_s=60)
+    app.include_router(crear_router())
+    app.mount("/demo/static", StaticFiles(directory=ESTATICOS), name="demo-static")
 
-    @contextlib.asynccontextmanager
-    async def ciclo_de_vida(app: FastAPI) -> AsyncIterator[None]:
-        verificar_un_solo_proceso()
-        configurar_logging(ajustes.log_level)
-        configurar(cargar_mensajes())
-        engine = crear_engine(ajustes.database_url)
-        crear_tablas(engine)
-        app.state.engine = engine
-        parar = asyncio.Event()
-        tareas: list[asyncio.Task[None]] = []
-        if ajustes.simulador:
-            demo = Demo(
-                engine, negocio, reloj, retardo_calendario_s=ajustes.demo_retardo_calendario_s
-            )
-            app.state.demo = demo
-            tareas = [
-                asyncio.create_task(demo.worker.correr(parar)),
-                asyncio.create_task(demo.worker.correr_limpieza(parar)),
-            ]
-        try:
-            yield
-        finally:
-            parar.set()
-            await asyncio.gather(*tareas, return_exceptions=True)
-            engine.dispose()
+    @app.middleware("http")
+    async def cabeceras_demo(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        respuesta = await call_next(request)
+        if request.url.path.startswith("/demo"):
+            for nombre, valor in CABECERAS_DEMO.items():
+                respuesta.headers[nombre] = valor
+        return respuesta
 
-    app = FastAPI(
-        title="AgenteManiculista",
-        lifespan=ciclo_de_vida,
-        docs_url=None,
-        redoc_url=None,
-        openapi_url=None,
-    )
-    app.state.settings = ajustes
-    app.state.config = negocio
+
+def _montar_base(app: FastAPI, negocio: Config) -> None:
+    """Correlation id por petición y /health."""
 
     @app.middleware("http")
     async def correlacion(
@@ -106,21 +83,69 @@ def crear_app(
         datos = await asyncio.to_thread(construir_salud, engine, negocio)
         return JSONResponse(datos)
 
+
+def _arrancar_simulador(
+    app: FastAPI, ajustes: Settings, negocio: Config, reloj: Reloj | None, parar: asyncio.Event
+) -> list[asyncio.Task[None]]:
+    demo = Demo(
+        app.state.engine, negocio, reloj, retardo_calendario_s=ajustes.demo_retardo_calendario_s
+    )
+    app.state.demo = demo
+    return [
+        asyncio.create_task(demo.worker.correr(parar)),
+        asyncio.create_task(demo.worker.correr_limpieza(parar)),
+    ]
+
+
+def crear_app(
+    settings: Settings | None = None,
+    config: Config | None = None,
+    reloj: Reloj | None = None,
+    fabrica_pasarela: Callable[[Engine], Pasarela] | None = None,
+) -> FastAPI:
+    """Construye la aplicación; las rutas de /demo solo existen con SIMULADOR=true."""
+    ajustes = settings or Settings()
+    negocio = config or cargar_config(DIRECTORIO_CONFIG)
+
+    @contextlib.asynccontextmanager
+    async def ciclo_de_vida(app: FastAPI) -> AsyncIterator[None]:
+        verificar_un_solo_proceso()
+        configurar_logging(ajustes.log_level)
+        configurar(cargar_mensajes())
+        engine = crear_engine(ajustes.database_url)
+        crear_tablas(engine)
+        app.state.engine = engine
+        if fabrica_pasarela is not None:
+            app.state.pasarela = fabrica_pasarela(engine)
+        parar = asyncio.Event()
+        tareas = (
+            _arrancar_simulador(app, ajustes, negocio, reloj, parar) if ajustes.simulador else []
+        )
+        try:
+            yield
+        finally:
+            parar.set()
+            pasarela = getattr(app.state, "pasarela", None)
+            if pasarela is not None:
+                await pasarela.esperar_tareas()
+            await asyncio.gather(*tareas, return_exceptions=True)
+            engine.dispose()
+
+    app = FastAPI(
+        title="AgenteManiculista",
+        lifespan=ciclo_de_vida,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+    )
+    app.state.settings = ajustes
+    app.state.config = negocio
+    _montar_base(app, negocio)
+    if ajustes.webhook_secret is not None:
+        app.state.webhook_secreto = ajustes.webhook_secret.get_secret_value()
+        app.include_router(crear_router_whatsapp())
     if ajustes.simulador:
-        app.state.limite_demo = LimiteTasa(maximo=300, ventana_s=60)
-        app.include_router(crear_router())
-        app.mount("/demo/static", StaticFiles(directory=ESTATICOS), name="demo-static")
-
-        @app.middleware("http")
-        async def cabeceras_demo(
-            request: Request, call_next: Callable[[Request], Awaitable[Response]]
-        ) -> Response:
-            respuesta = await call_next(request)
-            if request.url.path.startswith("/demo"):
-                for nombre, valor in CABECERAS_DEMO.items():
-                    respuesta.headers[nombre] = valor
-            return respuesta
-
+        _montar_demo(app)
     return app
 
 

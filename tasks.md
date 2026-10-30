@@ -623,7 +623,7 @@
   - Test: `pytest tests/unit/test_control_humano.py -q`
   - Hecho cuando: la pausa expira a los 120 min, el límite 15 por 10 min se respeta y no se escribe a quien no escribió primero.
 
-- [ ] **TASK-68** · Implementar el webhook del sidecar (firma HMAC, filtros, dedup, mapeo a Entrante)
+- [x] **TASK-68** · Implementar el webhook del sidecar (firma HMAC, filtros, dedup, mapeo a Entrante)
   - Objetivo: `POST /webhook/whatsapp` con 200 inmediato y procesamiento en background.
   - Trazabilidad: US-03, US-13, US-14, EARS-WA-01..04, EARS-WA-15, EC-23 · Plan: 10.6
   - Diseño: design.md §B8.3, §B8.4
