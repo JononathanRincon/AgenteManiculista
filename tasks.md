@@ -676,7 +676,7 @@
 ## Bloque 9 — Calendar real y push (Fase 11)
 *Skills:* `source-driven-development`, `security-and-hardening`, `test-driven-development`
 
-- [ ] **TASK-45** · Implementar el adaptador de Google Calendar con service account
+- [x] **TASK-45** · Implementar el adaptador de Google Calendar con service account
   - Objetivo: `CalendarioGoogle` con `extendedProperties`, `location` y mapeo de errores.
   - Trazabilidad: US-08, US-06, EARS-CAL-01, EARS-CAL-02, EARS-COL-03 · Plan: 11.1
   - Diseño: design.md §B9.2 (⚠️ documentación oficial de Calendar v3)
