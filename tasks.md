@@ -37,7 +37,7 @@
   - Test: `git branch --list main develop`
   - Hecho cuando: existen `main` y `develop` y el primer commit no contiene secretos.
 
-- [ ] **TASK-02** · Configurar pyproject, Makefile, ruff, mypy y pytest con cobertura de ramas
+- [x] **TASK-02** · Configurar pyproject, Makefile, ruff, mypy y pytest con cobertura de ramas
   - Objetivo: herramientas de calidad de `CONSTRAINTS.md` operativas con versiones verificadas.
   - Trazabilidad: NFR-CAL-01 · Plan: 2.2
   - Diseño: TDD §1, §8; design.md §0 (Dependencias)
