@@ -9,9 +9,11 @@ import { extraerTexto, normalizarMensaje, tipoDeMensaje } from '../src/mensajes.
 
 const SIN_AZAR = () => 0;
 
-test('backoff de reconexión: 2, 4, 8, 16, 32 y tope de 60 s, más jitter', () => {
-  const esperas = [1, 2, 3, 4, 5, 6, 7, 20].map((n) => esperaReconexionMs(n, SIN_AZAR));
+test('backoff de reconexión: 2, 4, 8, 16, 32 y tope de 60 s; 15 min tras 10 fallos', () => {
+  const esperas = [1, 2, 3, 4, 5, 6, 7, 9].map((n) => esperaReconexionMs(n, SIN_AZAR));
   assert.deepEqual(esperas, [2000, 4000, 8000, 16000, 32000, 60000, 60000, 60000]);
+  assert.equal(esperaReconexionMs(10, SIN_AZAR), 900000); // espera larga contra un número restringido
+  assert.equal(esperaReconexionMs(50, SIN_AZAR), 900000);
   assert.equal(esperaReconexionMs(1, () => 1), 3000);
   assert.equal(esperaReconexionMs(0, SIN_AZAR), 2000); // nunca menos que el primer escalón
   for (let i = 0; i < 100; i += 1) {
@@ -30,12 +32,13 @@ test('solo los chats individuales tienen teléfono', () => {
   assert.equal(esChatIndividual('573001112233@s.whatsapp.net'), true);
 });
 
-test('firma HMAC compatible con el backend de Python', () => {
-  // vector calculado con hmac.new(b'secreto-de-prueba', b'{"a":1}', sha256) en Python
+test('firma HMAC con marca de tiempo compatible con el backend de Python', () => {
+  // vector de Python: hmac.new(b'secreto-de-prueba', b'1800000000.{"a":1}', sha256)
   assert.equal(
-    firmar('secreto-de-prueba', '{"a":1}'),
-    'sha256=75c29ecad8889dd6f2964c96b138dbf7567ebee0d21ad8305bbc4affdf67034e',
+    firmar('secreto-de-prueba', '{"a":1}', '1800000000'),
+    'sha256=5d63a1c5e275838607564f16da9235a91d293ca761f33894a33d782e57a5f056',
   );
+  assert.notEqual(firmar('s', 'x', '1'), firmar('s', 'x', '2')); // la marca cambia la firma
 });
 
 test('comparaciones en tiempo constante', () => {
@@ -153,11 +156,13 @@ test('entrega de eventos: firma, reintentos y rendición ante 4xx', async () => 
     if (r instanceof Error) throw r;
     return r;
   };
-  const enviar = crearEmisorEventos({ url: 'http://backend/webhook', secreto: 's', fetchFn, dormir: async (ms) => esperas.push(ms), log: logSilencioso });
+  const enviar = crearEmisorEventos({ url: 'http://backend/webhook', secreto: 's', fetchFn, dormir: async (ms) => esperas.push(ms), log: logSilencioso, ahora: () => 1_800_000_000_500 });
   assert.equal(await enviar({ tipo: 'estado', conexion: 'open' }), true);
   assert.equal(llamadas.length, 3);
   assert.deepEqual(esperas, [1000, 2000]);
-  assert.equal(llamadas[0].headers['x-firma'], firmar('s', llamadas[0].body));
+  const cab = llamadas[0].headers;
+  assert.equal(cab['x-firma'], firmar('s', llamadas[0].body, cab['x-marca']));
+  assert.equal(cab['x-marca'], '1800000000'); // marca en segundos desde 1970
   // un 403 no se reintenta
   llamadas.length = 0;
   respuestas.push({ ok: false, status: 403 });

@@ -29,6 +29,7 @@ SUFIJO_JID = "@s.whatsapp.net"
 TIMEOUT_S = 10.0
 INTENTOS = 3
 MAX_EMITIDOS = 500
+MAX_CANDADOS = 1000
 CODIGOS_REINTENTABLES = {429, 500, 502, 503, 504}
 
 
@@ -66,6 +67,18 @@ class ClienteSidecar:
         if not isinstance(identificador, str) or not identificador:
             raise ErrorSidecar("respuesta de /enviar sin id")
         return identificador
+
+    def qr(self) -> str | None:
+        """QR de vinculación en texto (ASCII), o None si no hay uno pendiente."""
+        try:
+            r = self._http.get("/qr", headers=self._cabeceras)
+        except httpx.TransportError as exc:
+            raise ErrorSidecar(f"/qr inalcanzable ({type(exc).__name__})") from exc
+        if r.status_code == 404:
+            return None
+        if r.status_code >= 300:
+            raise ErrorSidecar(f"/qr respondió {r.status_code}")
+        return r.text
 
     def estado(self) -> dict[str, Any]:
         """Estado de la sesión de WhatsApp según el sidecar (para /health)."""
@@ -124,7 +137,11 @@ class MensajeriaBaileys:
 
     # --- puerto Mensajeria (avisos del worker, fuera de una conversación en curso) ---
     def enviar_texto(self, telefono: str, texto: str) -> None:
-        if not self._control.autorizar_envio(telefono, self._reloj.ahora()):
+        ahora = self._reloj.ahora()
+        if self._control.esta_pausado(telefono, ahora):  # la dueña está atendiendo a mano
+            log.info("envio_descartado", extra={"motivo": "pausa_humana"})
+            return
+        if not self._control.autorizar_envio(telefono, ahora):
             log.warning("envio_descartado", extra={"motivo": "rate_limit_o_sin_conversacion"})
             return
         self._enviar(telefono, texto, None)
@@ -147,6 +164,8 @@ class MensajeriaBaileys:
 
     def _enviar(self, telefono: str, texto: str, id_entrante: str | None) -> None:
         with self._lock:
+            if len(self._candados) > MAX_CANDADOS:  # poda los candados que nadie está usando
+                self._candados = {t: c for t, c in self._candados.items() if c.locked()}
             candado = self._candados.setdefault(telefono, threading.Lock())
         with candado:  # un mensaje a la vez por clienta: se conserva el orden y la presencia
             identificador = self._secuencia.enviar_respuesta(telefono, texto, id_entrante)

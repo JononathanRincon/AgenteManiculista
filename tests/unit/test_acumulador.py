@@ -134,3 +134,57 @@ async def test_cerrar_procesa_de_inmediato_lo_que_esperaba() -> None:
     assert [e.texto for e in registro.llamadas] == ["a\nb"]
     await acumulador.cerrar()  # idempotente
     assert len(registro.llamadas) == 1
+
+
+async def test_descartar_olvida_lo_pendiente_y_cancela_el_temporizador() -> None:
+    registro = Registro()
+    acumulador = Acumulador(registro, 0.05)
+    await acumulador.recibir(_msg("hola", 1))
+    assert acumulador.descartar("573001112233") is True
+    assert acumulador.descartar("573001112233") is False  # ya no queda nada
+    assert acumulador.descartar("573009999999") is False  # teléfono desconocido
+    await asyncio.sleep(0.15)
+    assert registro.llamadas == []
+    assert acumulador.pendientes() == 0
+
+
+async def test_un_tope_de_mensajes_vacia_el_lote_aunque_sigan_llegando() -> None:
+    registro = Registro()
+    acumulador = Acumulador(registro, 5, max_mensajes=3)
+    for n in range(1, 4):
+        await acumulador.recibir(_msg(f"m{n}", n))
+    assert [e.texto for e in registro.llamadas] == [
+        "m1\nm2\nm3"
+    ]  # no esperó a que parara de escribir
+
+
+async def test_una_espera_maxima_vacia_el_lote_aunque_reinicie_la_ventana() -> None:
+    registro = Registro()
+    reloj = {"t": 0.0}
+    acumulador = Acumulador(registro, 5, espera_maxima_s=20, reloj=lambda: reloj["t"])
+    await acumulador.recibir(_msg("a", 1))
+    reloj["t"] = 15.0
+    await acumulador.recibir(_msg("b", 2))
+    assert registro.llamadas == []
+    reloj["t"] = 21.0
+    await acumulador.recibir(_msg("c", 3))
+    assert [e.texto for e in registro.llamadas] == ["a\nb\nc"]
+
+
+async def test_las_cubetas_vacias_se_podan() -> None:
+    registro = Registro()
+    acumulador = Acumulador(registro, 0.02)
+    for n in range(50):
+        await acumulador.recibir(_msg("x", n, tel=f"57300{n:07d}"))
+    await asyncio.sleep(0.2)
+    assert len(registro.llamadas) == 50
+    assert len(acumulador._cubetas) <= 1  # noqa: SLF001 - no quedan cubetas acumulándose
+
+
+async def test_descartar_tolera_una_cubeta_sin_temporizador() -> None:
+    from app.acumulador import _Cubeta
+
+    acumulador = Acumulador(Registro(), 5)
+    acumulador._cubetas["573001112233"] = _Cubeta(mensajes=[_msg("huérfano", 1)])  # noqa: SLF001
+    assert acumulador.descartar("573001112233") is True
+    assert acumulador.pendientes() == 0

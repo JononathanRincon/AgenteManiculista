@@ -6,6 +6,19 @@ import { esChatIndividual } from './jid.js';
 const LIMITE_CUERPO = 64 * 1024;
 const PRESENCIAS = new Set(['composing', 'paused', 'available', 'unavailable']);
 
+function crearLimite(maximo, ventanaMs, ahora) {
+  const marcas = [];
+  return {
+    permitir() {
+      const t = ahora();
+      while (marcas.length && t - marcas[0] >= ventanaMs) marcas.shift();
+      if (marcas.length >= maximo) return false;
+      marcas.push(t);
+      return true;
+    },
+  };
+}
+
 function responder(res, codigo, cuerpo, tipo = 'application/json') {
   const datos = typeof cuerpo === 'string' ? cuerpo : JSON.stringify(cuerpo);
   res.writeHead(codigo, { 'content-type': `${tipo}; charset=utf-8`, 'cache-control': 'no-store' });
@@ -50,7 +63,8 @@ function validar(ruta, d) {
 }
 
 /** Servidor HTTP interno (solo red privada): todas las rutas exigen `Authorization: Bearer`. */
-export function crearServidor({ conexion, token, log }) {
+export function crearServidor({ conexion, token, log, maxEnviosPorMinuto = 30, ahora = Date.now }) {
+  const limite = crearLimite(maxEnviosPorMinuto, 60_000, ahora);
   return createServer(async (req, res) => {
     try {
       if (!tokenValido(req.headers.authorization, token)) {
@@ -60,10 +74,14 @@ export function crearServidor({ conexion, token, log }) {
       if (req.method === 'GET' && ruta === '/estado') return responder(res, 200, conexion.estado());
       if (req.method === 'GET' && ruta === '/qr') {
         const qr = conexion.qrAscii();
+        log.info({ evento: 'qr_consultado', entregado: qr !== null }); // auditoría, sin el contenido
         return qr === null ? responder(res, 404, { error: 'sin_qr' }) : responder(res, 200, qr, 'text/plain');
       }
       if (req.method !== 'POST' || !['/leer', '/presencia', '/enviar'].includes(ruta)) {
         return responder(res, 404, { error: 'no_encontrado' });
+      }
+      if (ruta === '/enviar' && !limite.permitir()) {
+        return responder(res, 429, { error: 'demasiados_envios' }); // defensa en profundidad
       }
       const datos = await leerJson(req);
       const problema = validar(ruta, datos);

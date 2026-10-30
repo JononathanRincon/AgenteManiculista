@@ -4,8 +4,9 @@
 # `app` (FastAPI) arranca en modo demo por defecto. Para WhatsApp real:
 #   1) completa en .env SIDECAR_TOKEN, WEBHOOK_SECRET y ADMIN_TOKEN (valores largos y al azar);
 #   2) docker compose --profile whatsapp up --build
-#   3) abre el QR en http://localhost:8000/admin/whatsapp/qr (cabecera X-Admin-Token) o en los logs
-#      del sidecar y vincula el celular desde WhatsApp > Dispositivos vinculados.
+#   3) abre el QR en http://localhost:8000/admin/whatsapp/qr (cabecera X-Admin-Token) y vincula el
+#      celular desde WhatsApp > Dispositivos vinculados. El QR no se escribe en los logs (da control
+#      de la cuenta); en desarrollo se puede activar con SHOW_QR_STDOUT=true.
 services:
   app:
     build: .
@@ -28,10 +29,11 @@ services:
     # Solo accesible desde la red de compose: nunca se publica un puerto al exterior.
     expose:
       - "3000"
-    env_file:
-      - path: .env
-        required: false
+    # Mínimo privilegio: el sidecar parsea el protocolo y los adjuntos de WhatsApp (la parte más
+    # expuesta), así que NO recibe todo el .env, solo estos dos secretos (se leen de .env o del entorno).
     environment:
+      SIDECAR_TOKEN: "${SIDECAR_TOKEN:-}"
+      WEBHOOK_SECRET: "${WEBHOOK_SECRET:-}"
       BACKEND_WEBHOOK_URL: "http://app:8000/webhook/whatsapp"
       AUTH_DIR: "/data/baileys_auth"
     volumes:

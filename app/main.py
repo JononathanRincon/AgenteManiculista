@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy import Engine
 
+from app.admin import crear_router_admin
 from app.config import Config, Settings, cargar_config
 from app.limite_tasa import LimiteTasa
 from app.logs import configurar_logging, nuevo_correlation_id
@@ -23,6 +24,7 @@ from app.salud import construir_salud
 from app.simulador.demo import Demo
 from app.simulador.rutas import ESTATICOS, crear_router
 from app.webhook import Pasarela, crear_router_whatsapp
+from app.whatsapp import ClienteSidecar
 
 DIRECTORIO_CONFIG = Path(__file__).resolve().parents[1] / "config"
 CABECERAS_DEMO = {
@@ -81,6 +83,10 @@ def _montar_base(app: FastAPI, negocio: Config) -> None:
         if engine is None:
             return JSONResponse({"estado": "iniciando"}, status_code=503)
         datos = await asyncio.to_thread(construir_salud, engine, negocio)
+        pasarela = getattr(request.app.state, "pasarela", None)
+        datos["whatsapp_estado"] = pasarela.estado_conexion if pasarela else "no_configurado"
+        desde = pasarela.estado_desde if pasarela else None
+        datos["whatsapp_desde"] = desde.isoformat() if desde else None
         return JSONResponse(datos)
 
 
@@ -144,6 +150,14 @@ def crear_app(
     if ajustes.webhook_secret is not None:
         app.state.webhook_secreto = ajustes.webhook_secret.get_secret_value()
         app.include_router(crear_router_whatsapp())
+    if ajustes.admin_token is not None:
+        app.state.admin_token = ajustes.admin_token.get_secret_value()
+        app.state.limite_admin = LimiteTasa(maximo=30, ventana_s=60)  # frena la fuerza bruta
+        if ajustes.sidecar_url and ajustes.sidecar_token:
+            app.state.sidecar = ClienteSidecar(
+                ajustes.sidecar_url, ajustes.sidecar_token.get_secret_value()
+            )
+        app.include_router(crear_router_admin())
     if ajustes.simulador:
         _montar_demo(app)
     return app

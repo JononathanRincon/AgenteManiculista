@@ -114,3 +114,33 @@ test('errores de WhatsApp: sin conexión 503, jid 400, otros 502', async () => {
   assert.deepEqual(await r.json(), { error: 'fallo_whatsapp' }); // sin filtrar el mensaje interno
   modoFallo = null;
 });
+
+test('el QR consultado deja un registro de auditoría sin su contenido', async () => {
+  const registros = [];
+  const conexion = { ...conexionFalsa, qrAscii: () => 'ASCII-QR-SECRETO' };
+  const s = crearServidor({ conexion, token: TOKEN, log: { ...log, info: (d) => registros.push(d) } });
+  await new Promise((r) => s.listen(0, '127.0.0.1', r));
+  const url = `http://127.0.0.1:${s.address().port}/qr`;
+  const r = await fetch(url, { headers: { authorization: `Bearer ${TOKEN}` } });
+  assert.equal(r.status, 200);
+  s.close();
+  assert.deepEqual(registros, [{ evento: 'qr_consultado', entregado: true }]);
+});
+
+test('defensa en profundidad: tope de envíos por minuto en /enviar', async () => {
+  let t = 0;
+  const s = crearServidor({ conexion: conexionFalsa, token: TOKEN, log, maxEnviosPorMinuto: 2, ahora: () => t });
+  await new Promise((r) => s.listen(0, '127.0.0.1', r));
+  const enviar = () =>
+    fetch(`http://127.0.0.1:${s.address().port}/enviar`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
+      body: JSON.stringify({ jid: JID, texto: 'hola', clave: `k${t}` }),
+    });
+  assert.equal((await enviar()).status, 200);
+  assert.equal((await enviar()).status, 200);
+  assert.equal((await enviar()).status, 429);
+  t = 61_000; // pasa la ventana de un minuto
+  assert.equal((await enviar()).status, 200);
+  s.close();
+});

@@ -137,19 +137,19 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 ## Fase 10 — Integración WhatsApp y observabilidad (Bloque 8)
 > **Criterio de desbloqueo:** Fase 9 cerrada.
 
-- [ ] ⏳ **10.1 Webhook, Graph API y salud**
-  - [ ] **Integración:** `test_webhook.py`, `test_whatsapp_cliente.py`, `test_health.py`
-  - [ ] **Unitarias:** `test_logging.py`
+- [x] ✅ **10.1 Webhook, Graph API y salud**
+  - [x] **Integración:** `test_webhook.py`, `test_whatsapp_cliente.py`, `test_health.py`
+  - [x] **Unitarias:** `test_logging.py`
   - Tareas: TASK-41 … TASK-44, TASK-59
   - v0.4 (ADR-009): TASK-41, 42, 43 y 59 reemplazadas por TASK-63 … TASK-72 (transporte Baileys con controles anti-ban)
-  - [ ] **Unitarias (v0.4):** `test_humanizacion.py`, `test_menus_numericos.py`, `test_acumulador.py`, `test_control_humano.py`; **Integración:** `test_webhook_whatsapp.py`, `test_mensajeria_baileys.py`; **Sidecar:** `node --test`
-  - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida; firma 100 %)
-  - Cierre: <fecha> · AI_PROCESS #<N>
+  - [x] **Unitarias (v0.4):** `test_humanizacion.py`, `test_menus_numericos.py`, `test_acumulador.py`, `test_control_humano.py`; **Integración:** `test_webhook_whatsapp.py`, `test_mensajeria_baileys.py`; **Sidecar:** `node --test`
+  - Pruebas: pasadas 702 + 40 del sidecar · fallidas 0 · cobertura ramas 100 % (medida; firma 100 %)
+  - Cierre: 2026-10-30 · AI_PROCESS #20
 
 ## Fase 11 — Calendar real y push (Bloque 9)
 > **Criterio de desbloqueo:** Fase 10 cerrada.
 
-- [ ] 🕓 **11.1 Calendar real, push y modo degradado**
+- [ ] ⏳ **11.1 Calendar real, push y modo degradado**
   - [ ] **Integración:** `test_calendario_google.py`, `test_push.py`, `test_modo_degradado.py`
   - Tareas: TASK-45 … TASK-47, TASK-60
   - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida)

@@ -35,7 +35,7 @@ from sqlalchemy import Engine, func, select
 
 from tests.integration.conftest import AHORA
 
-SECRETO = "secreto-de-prueba"
+SECRETO = "secreto-compartido-de-prueba-0123456789"
 TEL = "573001112233"
 JID = f"{TEL}@s.whatsapp.net"
 
@@ -83,20 +83,61 @@ def _catalogo() -> None:
 
 
 # ------------------------------------------------------------------ firma
-def _firma(cuerpo: bytes, secreto: str = SECRETO) -> str:
-    return "sha256=" + hmac.new(secreto.encode(), cuerpo, hashlib.sha256).hexdigest()
+AHORA_S = 1_800_000_000.0
+
+
+def _firma(cuerpo: bytes, secreto: str = SECRETO, marca: str | None = None) -> str:
+    marca = marca if marca is not None else str(int(time.time()))
+    mac = hmac.new(secreto.encode(), f"{marca}.".encode() + cuerpo, hashlib.sha256)
+    return "sha256=" + mac.hexdigest()
+
+
+def _cabeceras(cuerpo: bytes, secreto: str = SECRETO, marca: str | None = None) -> dict[str, str]:
+    marca = marca if marca is not None else str(int(time.time()))
+    return {"X-Marca": marca, "X-Firma": _firma(cuerpo, secreto, marca)}
 
 
 def test_verificar_firma() -> None:
     cuerpo = b'{"tipo": "estado", "conexion": "open"}'
-    assert verificar_firma(cuerpo, _firma(cuerpo), SECRETO) is True
-    assert verificar_firma(cuerpo, _firma(cuerpo).upper().replace("SHA256=", "sha256="), SECRETO)
-    assert verificar_firma(cuerpo, _firma(cuerpo, "otro"), SECRETO) is False
-    assert verificar_firma(cuerpo + b" ", _firma(cuerpo), SECRETO) is False
-    assert verificar_firma(cuerpo, None, SECRETO) is False
-    assert verificar_firma(cuerpo, "", SECRETO) is False
-    assert verificar_firma(cuerpo, _firma(cuerpo).removeprefix("sha256="), SECRETO) is False
-    assert verificar_firma(cuerpo, _firma(cuerpo, ""), "") is False  # sin secreto nunca se acepta
+    marca = str(int(AHORA_S))
+    firma = _firma(cuerpo, marca=marca)
+    assert verificar_firma(cuerpo, firma, SECRETO, marca, AHORA_S) is True
+    mayusculas = firma.upper().replace("SHA256=", "sha256=")
+    assert verificar_firma(cuerpo, mayusculas, SECRETO, marca, AHORA_S) is True
+    assert verificar_firma(cuerpo, _firma(cuerpo, "otro", marca), SECRETO, marca, AHORA_S) is False
+    assert verificar_firma(cuerpo + b" ", firma, SECRETO, marca, AHORA_S) is False
+    assert verificar_firma(cuerpo, None, SECRETO, marca, AHORA_S) is False
+    assert verificar_firma(cuerpo, "", SECRETO, marca, AHORA_S) is False
+    sin_prefijo = firma.removeprefix("sha256=")
+    assert verificar_firma(cuerpo, sin_prefijo, SECRETO, marca, AHORA_S) is False
+    assert verificar_firma(cuerpo, _firma(cuerpo, "", marca), "", marca, AHORA_S) is False
+
+
+def test_la_marca_de_tiempo_impide_repetir_eventos_capturados() -> None:
+    cuerpo = b'{"tipo": "propio", "id": "X", "jid": "573001112233@s.whatsapp.net"}'
+    marca = str(int(AHORA_S))
+    firma = _firma(cuerpo, marca=marca)
+    assert verificar_firma(cuerpo, firma, SECRETO, marca, AHORA_S + 299) is True  # dentro de 5 min
+    assert (
+        verificar_firma(cuerpo, firma, SECRETO, marca, AHORA_S + 301) is False
+    )  # repetición tardía
+    assert (
+        verificar_firma(cuerpo, firma, SECRETO, marca, AHORA_S - 301) is False
+    )  # reloj adelantado
+    assert verificar_firma(cuerpo, firma, SECRETO, None, AHORA_S) is False  # sin marca
+    assert verificar_firma(cuerpo, firma, SECRETO, "no-es-numero", AHORA_S) is False
+    otra = str(int(AHORA_S) + 1)  # cambiar la marca sin refirmar invalida la firma
+    assert verificar_firma(cuerpo, firma, SECRETO, otra, AHORA_S) is False
+
+
+def test_cross_language_con_el_sidecar() -> None:
+    # vector calculado por el sidecar de Node: firmar('secreto-de-prueba', '{"a":1}', '1800000000')
+    firma = _firma(b'{"a":1}', "secreto-de-prueba", "1800000000")
+    assert (
+        firma
+        == "sha256="
+        + hmac.new(b"secreto-de-prueba", b'1800000000.{"a":1}', hashlib.sha256).hexdigest()
+    )
 
 
 @pytest.mark.parametrize(
@@ -139,7 +180,12 @@ def cliente(tmp_path: Path, cfg: Config) -> Iterator[tuple[TestClient, EmisorFal
 
 def _post(c: TestClient, cuerpo: dict[str, Any], firma: str | None = "auto") -> Any:
     crudo = json.dumps(cuerpo).encode()
-    cabeceras = {} if firma is None else {"X-Firma": _firma(crudo) if firma == "auto" else firma}
+    if firma is None:
+        cabeceras: dict[str, str] = {}
+    elif firma == "auto":
+        cabeceras = _cabeceras(crudo)
+    else:
+        cabeceras = {"X-Marca": str(int(time.time())), "X-Firma": firma}
     return c.post("/webhook/whatsapp", content=crudo, headers=cabeceras)
 
 
@@ -161,12 +207,38 @@ def test_payload_invalido_con_firma_valida_da_422(
     assert _post(c, {"tipo": "mensaje", "id": "", "jid": JID}).status_code == 422
     assert _post(c, {"tipo": "desconocido"}).status_code == 422
     assert _post(c, {"tipo": "mensaje", "id": "x", "jid": JID, "campo_extra": 1}).status_code == 422
+    crudo = b"no es json"
+    assert c.post("/webhook/whatsapp", content=crudo, headers=_cabeceras(crudo)).status_code == 422
+
+
+def test_un_cuerpo_gigante_se_rechaza_antes_de_verificar_la_firma(
+    cliente: tuple[TestClient, EmisorFalso, Pasarela],
+) -> None:
+    c, emisor, _ = cliente
+    grande = b"x" * (16 * 1024 + 1)
     assert (
-        c.post(
-            "/webhook/whatsapp", content=b"no es json", headers={"X-Firma": _firma(b"no es json")}
-        ).status_code
-        == 422
+        c.post("/webhook/whatsapp", content=grande, headers=_cabeceras(grande)).status_code == 413
     )
+
+    # sin Content-Length declarado (transferencia en trozos) también se corta
+    def trozos() -> Iterator[bytes]:
+        for _ in range(40):
+            yield b"y" * 1024
+
+    assert c.post("/webhook/whatsapp", content=trozos()).status_code == 413
+    assert emisor.respuestas == []
+
+
+def test_un_evento_con_firma_repetida_fuera_de_tiempo_da_403(
+    cliente: tuple[TestClient, EmisorFalso, Pasarela],
+) -> None:
+    c, _, _ = cliente
+    crudo = json.dumps({"tipo": "estado", "conexion": "open"}).encode()
+    vieja = str(int(time.time()) - 3600)
+    r = c.post("/webhook/whatsapp", content=crudo, headers=_cabeceras(crudo, marca=vieja))
+    assert r.status_code == 403
+    sin_marca = {"X-Firma": _firma(crudo)}
+    assert c.post("/webhook/whatsapp", content=crudo, headers=sin_marca).status_code == 403
 
 
 def test_con_procesamiento_lento_el_200_llega_en_menos_de_un_segundo(
@@ -364,3 +436,80 @@ async def test_nunca_se_escribe_a_quien_no_escribio_primero(
     await pasarela.manejar(EventoPropio(tipo="propio", id="Y1", jid="573007776655@s.whatsapp.net"))
     await pasarela.manejar(EventoEstado(tipo="estado", conexion="open"))
     assert emisor.respuestas == []  # el bot solo habla cuando le escriben
+
+
+async def test_si_el_agente_no_responde_nada_no_se_envia_nada(
+    banco: tuple[Pasarela, EmisorFalso, RelojFalso, Engine],
+) -> None:
+    pasarela, emisor, _, _ = banco
+    pasarela._agente.procesar = lambda entrante: []  # type: ignore[method-assign]  # noqa: SLF001
+    assert await pasarela.manejar(_mensaje("V1")) == "aceptado"
+    assert emisor.respuestas == []
+
+
+async def test_si_la_duena_interviene_durante_el_procesamiento_no_se_envia_nada(
+    banco: tuple[Pasarela, EmisorFalso, RelojFalso, Engine],
+) -> None:
+    pasarela, emisor, _, _ = banco
+    await pasarela.manejar(_mensaje("P1", "hola"))  # crea la conversación
+    original = pasarela._agente.procesar  # noqa: SLF001
+
+    def procesar_y_la_duena_responde(entrante: Any) -> list[Saliente]:
+        salidas = original(entrante)
+        pasarela._control.pausar(TEL, pasarela._reloj.ahora())  # noqa: SLF001 - la dueña escribe ahora
+        return salidas
+
+    pasarela._agente.procesar = procesar_y_la_duena_responde  # type: ignore[method-assign]  # noqa: SLF001
+    await pasarela.manejar(_mensaje("P2", "1"))
+    assert len(emisor.respuestas) == 1  # solo la primera: la segunda se descartó por la pausa
+
+
+async def test_la_intervencion_antes_de_la_primera_respuesta_pausa_y_descarta_lo_pendiente(
+    engine: Engine, cfg: Config
+) -> None:
+    emisor, reloj = EmisorFalso(), RelojFalso(AHORA)
+    pasarela = _pasarela(engine, cfg, emisor, reloj, debounce_segundos=0.3)
+    await pasarela.manejar(_mensaje("Q1", "hola"))  # espera la ventana: aún no hay conversación
+    assert (
+        await pasarela.manejar(EventoPropio(tipo="propio", id="DUENA", jid=JID))
+        == "pausado_por_humano"
+    )
+    await asyncio.sleep(0.5)
+    await pasarela.esperar_tareas()
+    assert emisor.respuestas == []  # la dueña ya estaba atendiendo: el bot no le pisa
+    assert await pasarela.manejar(_mensaje("Q2", "hola otra vez")) == "pausado"
+
+
+async def test_las_rafagas_de_una_misma_clienta_se_limitan(
+    banco: tuple[Pasarela, EmisorFalso, RelojFalso, Engine],
+) -> None:
+    pasarela, _, _, _ = banco
+    resultados = [await pasarela.manejar(_mensaje(f"F{n}", "x")) for n in range(65)]
+    assert resultados.count("limitado") == 5
+    assert resultados[0] != "limitado"
+
+
+async def test_el_menu_solo_se_recuerda_si_el_envio_salio(
+    banco: tuple[Pasarela, EmisorFalso, RelojFalso, Engine],
+) -> None:
+    from app.modelos import OpcionesOfrecidas
+
+    pasarela, emisor, _, engine = banco
+
+    def falla(*_: object) -> None:
+        raise RuntimeError("sidecar caído")
+
+    emisor.responder = falla  # type: ignore[method-assign,assignment]
+    await pasarela.manejar(_mensaje("M1", "hola"))
+    with unidad_de_trabajo(engine, escritura=False) as s:
+        assert s.get(OpcionesOfrecidas, TEL) is None  # la clienta nunca vio ese menú
+
+
+@pytest.mark.parametrize("conexion", ["reemplazada", "prohibida", "loggedOut"])
+async def test_los_estados_terminales_del_sidecar_se_registran(
+    banco: tuple[Pasarela, EmisorFalso, RelojFalso, Engine], conexion: str
+) -> None:
+    pasarela, _, _, _ = banco
+    evento = EventoEstado.model_validate({"tipo": "estado", "conexion": conexion})
+    assert await pasarela.manejar(evento) == f"estado_{conexion}"
+    assert pasarela.estado_conexion == conexion

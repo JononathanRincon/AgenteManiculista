@@ -1,8 +1,11 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
-/** HMAC-SHA256 del cuerpo crudo con el secreto compartido: 'sha256=<hex>' (cabecera X-Firma). */
-export function firmar(secreto, cuerpo) {
-  return 'sha256=' + createHmac('sha256', secreto).update(cuerpo).digest('hex');
+/**
+ * HMAC-SHA256 de `marca.cuerpo` con el secreto compartido: 'sha256=<hex>' (cabecera X-Firma).
+ * La marca (segundos desde 1970, cabecera X-Marca) impide repetir un evento capturado.
+ */
+export function firmar(secreto, cuerpo, marca) {
+  return 'sha256=' + createHmac('sha256', secreto).update(`${marca}.${cuerpo}`).digest('hex');
 }
 
 /** Compara dos textos en tiempo constante (sin filtrar el largo del secreto). */
