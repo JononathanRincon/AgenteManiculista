@@ -169,3 +169,68 @@ def test_ui_objetivos_tactiles_de_44_px_y_diseno_vertical(cliente: TestClient) -
     assert "max-aspect-ratio: 1/1" in css
     assert "prefers-reduced-motion" in css
     assert "prefers-color-scheme: dark" in css
+
+
+def test_carrera_gana_exactamente_una_y_el_calendario_queda_con_una_cita(
+    cliente: TestClient,
+) -> None:
+    r = cliente.post("/demo/api/carrera", json={})
+    assert r.status_code == 200
+    cuerpo = r.json()
+    assert cuerpo["ganadora"]["nombre"] != cuerpo["rechazada"]["nombre"]
+    assert "se acaba de ocupar" in cuerpo["rechazada"]["mensaje"]
+    demo = cliente.app.state.demo  # type: ignore[attr-defined]
+    demo.worker.procesar_uno()
+    eventos = cliente.get("/demo/api/calendario").json()["eventos"]
+    assert [e["estado"] for e in eventos] == ["confirmada"]
+
+
+def test_carrera_repetida_nunca_produce_dos_ganadoras(cliente: TestClient) -> None:
+    demo = cliente.app.state.demo  # type: ignore[attr-defined]
+    for _ in range(12):
+        r = cliente.post("/demo/api/carrera", json={"servicio_id": "retiro"})
+        assert r.status_code == 200
+        while demo.worker.procesar_uno():
+            pass
+    eventos = cliente.get("/demo/api/calendario").json()["eventos"]
+    inicios = [e["inicio"] for e in eventos]
+    assert len(inicios) == 12
+    assert len(set(inicios)) == 12  # ningún horario repetido
+
+
+def test_carrera_valida_servicio_y_horario(cliente: TestClient) -> None:
+    assert cliente.post("/demo/api/carrera", json={"servicio_id": "inventado"}).status_code == 404
+    ocupado = cliente.post("/demo/api/carrera", json={"inicio": "2030-01-01T10:00:00-05:00"})
+    assert ocupado.status_code == 409
+    assert ocupado.json()["detail"]["codigo"] == "HORARIO_NO_DISPONIBLE"
+    assert cliente.post("/demo/api/carrera", json={"inicio": "no-es-fecha"}).status_code == 422
+    assert cliente.post("/demo/api/carrera", json={"extra": 1}).status_code == 422
+
+
+def test_carrera_con_horario_explicito(cliente: TestClient) -> None:
+    demo = cliente.app.state.demo  # type: ignore[attr-defined]
+    primera = cliente.post("/demo/api/carrera", json={}).json()
+    assert primera["ganadora"]
+    while demo.worker.procesar_uno():
+        pass
+    inicio = cliente.get("/demo/api/calendario").json()["eventos"][0]["inicio"]
+    repetida = cliente.post("/demo/api/carrera", json={"inicio": inicio})
+    assert repetida.status_code == 409  # el horario ya quedó tomado por la primera prueba
+
+
+def test_errores_internos_de_la_demo_se_traducen_a_http(cliente: TestClient) -> None:
+    from app.simulador.demo import CarreraSinGanadora, TelefonoInvalido
+
+    demo = cliente.app.state.demo  # type: ignore[attr-defined]
+
+    def sin_ganadora(*_: object) -> dict[str, dict[str, str]]:
+        raise CarreraSinGanadora("[]")
+
+    def telefono_malo(*_: object, **__: object) -> list[object]:
+        raise TelefonoInvalido("x")
+
+    demo.carrera = sin_ganadora
+    assert cliente.post("/demo/api/carrera", json={}).status_code == 500
+    demo.mensaje = telefono_malo
+    cuerpo = {"telefono_demo": TEL, "texto": "hola"}
+    assert cliente.post("/demo/api/mensaje", json=cuerpo).status_code == 422

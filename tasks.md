@@ -415,7 +415,7 @@
   - Test: `pytest tests/e2e/test_simulador.py -q -k ui` más captura de pantalla vertical revisada
   - Hecho cuando: el flujo de agendar se completa desde la UI y el calendario se actualiza solo.
 
-- [ ] **TASK-33** · Añadir el botón de dos confirmaciones simultáneas
+- [x] **TASK-33** · Añadir el botón de dos confirmaciones simultáneas
   - Objetivo: mostrar visualmente que el sistema impide la cita doble.
   - Trazabilidad: US-12, EARS-SIM-04 · Plan: 8.4
   - Diseño: design.md §B6.4
