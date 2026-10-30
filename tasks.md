@@ -322,7 +322,7 @@
   - Test: `pytest tests/unit/test_conversacion.py -q -k agendar`
   - Hecho cuando: ninguna ruta llega a `CONFIRMANDO` sin selección de hora y el choque reofrece horarios.
 
-- [ ] **TASK-25** · Añadir modalidad domicilio con dirección, zona, recargo y total
+- [x] **TASK-25** · Añadir modalidad domicilio con dirección, zona, recargo y total
   - Objetivo: estado de modalidad solo si el domicilio está habilitado y el servicio lo permite.
   - Trazabilidad: US-06, EARS-CON-04, EARS-DOM-01..04, EC-17 · Plan: 7.3
   - Diseño: design.md §B5.4
@@ -332,7 +332,7 @@
   - Test: `pytest tests/unit/test_domicilio.py -q`
   - Hecho cuando: con el interruptor apagado el flujo no menciona domicilio y encendido muestra el total.
 
-- [ ] **TASK-26** · Implementar los flujos de reagendar y cancelar
+- [x] **TASK-26** · Implementar los flujos de reagendar y cancelar
   - Objetivo: elegir su cita futura y confirmar la acción.
   - Trazabilidad: US-04, US-05, EARS-RES-07, EARS-RES-08 · Plan: 7.4
   - Diseño: design.md §B5.4
