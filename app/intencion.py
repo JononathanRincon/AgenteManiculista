@@ -5,7 +5,18 @@ from __future__ import annotations
 import re
 import unicodedata
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
+from typing import Any, Literal
+
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    ValidationInfo,
+    field_validator,
+)
 
 from app.config import ConfiguracionInvalida, leer_yaml
 from app.mensajes import Mensajes
@@ -88,3 +99,56 @@ def resolver_faq(texto: str, reglas: Reglas) -> str | None:
         if any(_coincide(normalizado, p) for p in palabras):
             return respuesta
     return None
+
+
+# --- Esquema estricto de la intención interpretada por el LLM (design.md §B7.2) ---
+class Intencion(BaseModel):
+    """Resultado validado del LLM. Cualquier incoherencia invalida la respuesta completa."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    intencion: Literal[
+        "agendar",
+        "reagendar",
+        "cancelar",
+        "consultar_precio",
+        "consultar_horario",
+        "consultar_ubicacion",
+        "saludo",
+        "desconocida",
+    ]
+    servicio_id: str | None = None
+    fecha_tentativa: date | None = None
+    franja: Literal["manana", "tarde", "noche"] | None = None
+    confianza: float = Field(ge=0, le=1)
+
+    @field_validator("servicio_id")
+    @classmethod
+    def _servicio_del_catalogo(cls, valor: str | None, info: ValidationInfo) -> str | None:
+        if valor is None:
+            return None
+        contexto = info.context or {}
+        if valor not in contexto.get("catalogo", ()):
+            raise ValueError("servicio fuera del catálogo")
+        return valor
+
+    @field_validator("fecha_tentativa")
+    @classmethod
+    def _fecha_no_pasada(cls, valor: date | None, info: ValidationInfo) -> date | None:
+        hoy = (info.context or {}).get("hoy")
+        if valor is not None and hoy is not None and valor < hoy:
+            raise ValueError("la fecha ya pasó")
+        return valor
+
+
+def validar_intencion(
+    crudo: str | dict[str, Any], catalogo: set[str] | frozenset[str], hoy: date
+) -> Intencion | None:
+    """Valida la salida del LLM; devuelve None ante cualquier problema (nunca lanza)."""
+    contexto = {"catalogo": frozenset(catalogo), "hoy": hoy}
+    try:
+        if isinstance(crudo, str):
+            return Intencion.model_validate_json(crudo, context=contexto)
+        return Intencion.model_validate(crudo, context=contexto)
+    except (ValidationError, ValueError, TypeError):
+        return None
