@@ -312,7 +312,7 @@
   - Test: `pytest tests/unit/test_conversacion.py -q -k "transiciones or inactividad"`
   - Hecho cuando: toda transición no permitida se rechaza y 30 min sin actividad reinician a `INICIO`.
 
-- [ ] **TASK-24** · Implementar el flujo de agendar con botones y listas
+- [x] **TASK-24** · Implementar el flujo de agendar con botones y listas
   - Objetivo: servicio → día → hora → confirmar, con ids interactivos y `CONFIRMANDO` solo desde una hora ofrecida.
   - Trazabilidad: US-02, US-03, EARS-CON-03, EARS-CON-05, EARS-RES-04 · Plan: 7.2
   - Diseño: design.md §B5.2, §B5.4

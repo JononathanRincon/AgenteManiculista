@@ -33,6 +33,7 @@ modalidad_domicilio: "A domicilio"
 direccion_pedir: "Escríbeme la dirección a la que debo ir (barrio y dirección completa)."
 direccion_fuera_zona: >-
   Lo siento, por ahora solo atiendo a domicilio en: {zonas}. ¿Prefieres atenderte en el local?
+otro_dia: "Otro día"
 dia_cuerpo: "¿Para qué día?"
 dia_boton: "Ver días"
 dia_sin_horarios: "No tengo horarios libres en los próximos días. Escríbeme más adelante 🙏"

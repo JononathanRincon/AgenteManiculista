@@ -38,6 +38,7 @@ CLAVES_REQUERIDAS: frozenset[str] = frozenset(
         "modalidad_domicilio",
         "direccion_pedir",
         "direccion_fuera_zona",
+        "otro_dia",
         "dia_cuerpo",
         "dia_boton",
         "dia_sin_horarios",
