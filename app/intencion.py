@@ -162,13 +162,18 @@ MAX_TEXTO_LLM = 300
 DIAS_SEMANA = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
 _NUMEROS = re.compile(r"\+?\d[\d\s().-]{5,}\d")
 _CORREOS = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+_DIRECCIONES = re.compile(
+    r"\b(?:calle|carrera|cra|cr|kr|avenida|av|diagonal|diag|transversal|tv)\b\.?\s*\d+[^,;.\n]*",
+    re.IGNORECASE,
+)
 
 
 def redactar(texto: str) -> str:
     """Quita teléfonos y correos que la clienta escriba dentro del mensaje y limita el largo."""
     sin_marcas = texto.replace("<", " ").replace(">", " ")  # no puede cerrar la marca <mensaje>
     sin_correos = _CORREOS.sub("[correo]", sin_marcas)
-    sin_numeros = _NUMEROS.sub("[número]", sin_correos)
+    sin_direcciones = _DIRECCIONES.sub("[dirección]", sin_correos)
+    sin_numeros = _NUMEROS.sub("[número]", sin_direcciones)
     return " ".join(sin_numeros.split())[:MAX_TEXTO_LLM]
 
 

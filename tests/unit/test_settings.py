@@ -66,3 +66,16 @@ def test_env_example_documenta_todas_las_variables_sin_valores() -> None:
     assert all(v == "" for v in valores)
     esperadas = {n.upper() for n in Settings.model_fields}
     assert esperadas == declaradas
+
+
+def test_en_produccion_gemini_exige_el_tier_de_pago(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENTORNO", "produccion")
+    monkeypatch.setenv("PROVEEDOR_LLM", "gemini")
+    monkeypatch.setenv("GEMINI_API_KEY", "clave-de-prueba")
+    with pytest.raises(ValidationError, match="GEMINI_TIER"):
+        Settings(_env_file=None)  # type: ignore[call-arg]
+    monkeypatch.setenv("GEMINI_TIER", "paid")
+    assert Settings(_env_file=None).gemini_tier == "paid"  # type: ignore[call-arg]
+    monkeypatch.setenv("ENTORNO", "demo")
+    monkeypatch.setenv("GEMINI_TIER", "free")
+    assert Settings(_env_file=None).gemini_tier == "free"  # type: ignore[call-arg]

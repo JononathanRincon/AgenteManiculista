@@ -127,17 +127,17 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 ## Fase 9 — Capa de intención (Bloque 7)
 > **Criterio de desbloqueo:** Fase 8 cerrada.
 
-- [ ] ⏳ **9.1 Intención con LLM y fallback**
-  - [ ] **Unitarias:** `test_intencion_esquema.py`, `test_intencion_orquestador.py`, `test_prompt_privacidad.py`, `test_llm_ninguno.py`, `test_llm_gemini.py`
-  - [ ] **Evals:** `tests/evals/test_evals.py`
+- [x] ✅ **9.1 Intención con LLM y fallback**
+  - [x] **Unitarias:** `test_intencion_esquema.py`, `test_intencion_orquestador.py`, `test_prompt_privacidad.py`, `test_llm_ninguno.py`, `test_llm_gemini.py`
+  - [x] **Evals:** `tests/evals/test_evals.py`
   - Tareas: TASK-35 … TASK-40, TASK-58
-  - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida)
-  - Cierre: <fecha> · AI_PROCESS #<N>
+  - Pruebas: pasadas 524 · fallidas 0 · cobertura ramas 100 % (medida)
+  - Cierre: 2026-10-30 · AI_PROCESS #19
 
 ## Fase 10 — Integración WhatsApp y observabilidad (Bloque 8)
 > **Criterio de desbloqueo:** Fase 9 cerrada.
 
-- [ ] 🕓 **10.1 Webhook, Graph API y salud**
+- [ ] ⏳ **10.1 Webhook, Graph API y salud**
   - [ ] **Integración:** `test_webhook.py`, `test_whatsapp_cliente.py`, `test_health.py`
   - [ ] **Unitarias:** `test_logging.py`
   - Tareas: TASK-41 … TASK-44, TASK-59

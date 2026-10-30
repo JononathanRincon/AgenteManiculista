@@ -9,10 +9,10 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, func, select
 from sqlalchemy.exc import IntegrityError
 
 from app.agenda import dias_con_cupo, horas_libres
@@ -39,7 +39,7 @@ from app.intencion import (
 from app.llm.base import ProveedorLLM, ServicioResumen
 from app.mensajes import texto
 from app.metricas import MENSAJES_SIN_LLM, MENSAJES_TOTAL, incrementar
-from app.modelos import MensajeProcesado, Reserva, unidad_de_trabajo
+from app.modelos import LlamadaLLM, MensajeProcesado, Reserva, unidad_de_trabajo
 from app.puertos import Opcion, Reloj
 from app.reservas import (
     HorarioOcupado,
@@ -153,7 +153,7 @@ class Agente:
         nombre = resolver_por_palabras_clave(mensaje, self._reglas)
         if nombre is not None:
             return self._responder_intencion(nombre)
-        intencion = self._consultar_llm(mensaje, ctx, ahora)
+        intencion = self._consultar_llm(mensaje, e.telefono, ctx, ahora)
         if intencion is None:
             return None
         traza.uso_llm = True
@@ -173,10 +173,35 @@ class Agente:
         }
         return respuestas.get(nombre)
 
-    def _consultar_llm(self, mensaje: str, ctx: Contexto, ahora: datetime) -> Intencion | None:
+    def _cupo_llm(self, telefono: str, ahora: datetime) -> bool:
+        """Tope de consultas al LLM por clienta (hora) y global (día): costo y abuso."""
+        negocio = self._config.negocio
+        with unidad_de_trabajo(self._engine, escritura=False) as s:
+            por_telefono = s.scalar(
+                select(func.count())
+                .select_from(LlamadaLLM)
+                .where(LlamadaLLM.telefono == telefono, LlamadaLLM.en > ahora - timedelta(hours=1))
+            )
+            global_dia = s.scalar(
+                select(func.count())
+                .select_from(LlamadaLLM)
+                .where(LlamadaLLM.en > ahora - timedelta(days=1))
+            )
+        return (por_telefono or 0) < negocio.llm_max_por_telefono_hora and (
+            global_dia or 0
+        ) < negocio.llm_max_global_dia
+
+    def _consultar_llm(
+        self, mensaje: str, telefono: str, ctx: Contexto, ahora: datetime
+    ) -> Intencion | None:
         """Pregunta al LLM solo texto, catálogo, fecha y estado; nunca lanza (EARS-INT-03/04)."""
         if self._proveedor is None:
             return None
+        if not self._cupo_llm(telefono, ahora):
+            log.warning("llm_cupo_agotado")
+            return None
+        with unidad_de_trabajo(self._engine) as s:
+            s.add(LlamadaLLM(telefono=telefono, en=ahora))
         catalogo = [ServicioResumen(s.id, s.nombre) for s in self._config.servicios]
         hoy = ahora.astimezone(self._config.negocio.zona).date()
         try:

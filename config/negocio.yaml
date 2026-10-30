@@ -11,6 +11,8 @@ cache_ttl_segundos: 60
 refresco_degradado_minutos: 5
 reserva_pendiente_expira_minutos: 10
 inactividad_reinicio_minutos: 30
+llm_max_por_telefono_hora: 10       # consultas al LLM por clienta y hora (costo y abuso)
+llm_max_global_dia: 500             # consultas al LLM por día en total
 horario:                            # null = no se atiende ese día
   lunes: {abre: "08:00", cierra: "18:00"}
   martes: {abre: "08:00", cierra: "18:00"}

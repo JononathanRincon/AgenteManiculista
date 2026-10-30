@@ -118,13 +118,13 @@
 
 ### Fase 9 — Capa de intención (Bloque 7)
 *Skills:* `arquitecto-de-prompts`, `source-driven-development`, `security-and-hardening`, `test-driven-development`
-- [ ] **9.1** Esquema Pydantic de intención
-- [ ] **9.2** Puerto `ProveedorLLM` y proveedor `none`
-- [ ] **9.3** Adaptador Gemini
-- [ ] **9.4** Orquestador palabras clave → LLM → fallback con métrica
-- [ ] **9.5** Test de privacidad del prompt
-- [ ] **9.6** Evals
-- [ ] **9.7** Revisión del bloque
+- [x] **9.1** Esquema Pydantic de intención
+- [x] **9.2** Puerto `ProveedorLLM` y proveedor `none`
+- [x] **9.3** Adaptador Gemini
+- [x] **9.4** Orquestador palabras clave → LLM → fallback con métrica
+- [x] **9.5** Test de privacidad del prompt
+- [x] **9.6** Evals
+- [x] **9.7** Revisión del bloque
 
 ### Fase 10 — Integración WhatsApp (Baileys, v0.4) y observabilidad (Bloque 8)
 *Skills:* `source-driven-development`, `security-and-hardening`, `observability-and-instrumentation`

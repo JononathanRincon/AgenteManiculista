@@ -508,7 +508,7 @@
   - Test: `pytest tests/evals -q`
   - Hecho cuando: las frases resueltas por palabras clave dan la intención esperada y las ambiguas caen al menú.
 
-- [ ] **TASK-58** · Revisión del Bloque 7
+- [x] **TASK-58** · Revisión del Bloque 7
   - Objetivo: cerrar el bloque con revisión de seguridad (prompt injection y fuga de datos).
   - Trazabilidad: NFR-CAL-01, NFR-PRI-01 · Plan: 9.7
   - Diseño: design.md §B7.5
