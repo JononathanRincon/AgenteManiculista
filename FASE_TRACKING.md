@@ -70,7 +70,7 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
   - [x] **Unitarias:** `tests/unit/test_config.py`, `test_settings.py`, `test_mensajes.py`
   - [x] **Integración:** `tests/integration/test_modelos.py`
   - Tareas: TASK-05 … TASK-08, TASK-52
-  - Pruebas: pasadas 44 · fallidas 0 · fallidas 0 · cobertura ramas 99 % (medida)
+  - Pruebas: pasadas 44 · fallidas 0 · cobertura ramas 99 % (medida)
   - Cierre: 2026-10-30 · AI_PROCESS #12
 
 ## Fase 4 — Disponibilidad (Bloque 2)
