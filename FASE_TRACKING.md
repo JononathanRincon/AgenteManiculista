@@ -76,16 +76,16 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 ## Fase 4 — Disponibilidad (Bloque 2)
 > **Criterio de desbloqueo:** Fase 3 cerrada.
 
-- [ ] ⏳ **4.1 Disponibilidad y puerto Calendario**
-  - [ ] **Unitarias:** `tests/unit/test_disponibilidad.py`, `test_calendario_falso.py`
+- [x] ✅ **4.1 Disponibilidad y puerto Calendario**
+  - [x] **Unitarias:** `tests/unit/test_disponibilidad.py`, `test_calendario_falso.py`
   - Tareas: TASK-09 … TASK-11, TASK-53
-  - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida; objetivo 100 %)
-  - Cierre: <fecha> · AI_PROCESS #<N>
+  - Pruebas: pasadas 72 · fallidas 0 · cobertura ramas 100 % (medida; objetivo 100 %)
+  - Cierre: 2026-10-30 · AI_PROCESS #13
 
 ## Fase 5 — Caché (Bloque 3)
 > **Criterio de desbloqueo:** Fase 4 cerrada.
 
-- [ ] 🕓 **5.1 Caché y espejo de eventos**
+- [ ] ⏳ **5.1 Caché y espejo de eventos**
   - [ ] **Unitarias:** `tests/unit/test_cache.py`
   - [ ] **Integración:** `tests/integration/test_espejo.py`
   - Tareas: TASK-12, TASK-13, TASK-54
