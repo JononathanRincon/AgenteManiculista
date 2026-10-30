@@ -107,17 +107,17 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 ## Fase 7 — Máquina de estados (Bloque 5)
 > **Criterio de desbloqueo:** Fase 6 cerrada.
 
-- [ ] ⏳ **7.1 Conversación y flujos**
-  - [ ] **Unitarias:** `test_conversacion.py`, `test_domicilio.py`, `test_gestion.py`, `test_palabras_clave.py`, `test_dedup_aviso.py`
-  - [ ] **E2E:** `tests/e2e/test_agendar_sin_llm.py`
+- [x] ✅ **7.1 Conversación y flujos**
+  - [x] **Unitarias:** `test_conversacion.py`, `test_domicilio.py`, `test_gestion.py`, `test_palabras_clave.py`, `test_dedup_aviso.py`
+  - [x] **E2E:** `tests/e2e/test_agendar_sin_llm.py`
   - Tareas: TASK-23 … TASK-29, TASK-56
-  - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida; objetivo 100 %)
-  - Cierre: <fecha> · AI_PROCESS #<N>
+  - Pruebas: pasadas 330 · fallidas 0 · cobertura ramas 100 % (medida; objetivo 100 %)
+  - Cierre: 2026-10-30 · AI_PROCESS #16
 
 ## Fase 8 — Simulador (Bloque 6)
 > **Criterio de desbloqueo:** Fase 7 cerrada.
 
-- [ ] 🕓 **8.1 Simulador `/demo`**
+- [ ] ⏳ **8.1 Simulador `/demo`**
   - [ ] **Unitarias:** `test_transporte_simulado.py`
   - [ ] **E2E:** `tests/e2e/test_simulador.py`
   - Tareas: TASK-30 … TASK-34, TASK-57

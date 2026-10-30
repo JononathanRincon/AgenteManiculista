@@ -271,7 +271,7 @@ class Agente:
         if ctx.estado != Estado.ELIGIENDO_SERVICIO:
             return self._reofrecer(ctx, e, ahora, desconocido=True)
         try:
-            servicio = self._config.servicio(entrada.split(":", 1)[1])
+            servicio = self._config.servicio(entrada.partition(":")[2])
         except KeyError:
             return self._reofrecer(ctx, e, ahora, desconocido=True)
         ctx.servicio_id = servicio.id
@@ -343,7 +343,7 @@ class Agente:
         if entrada == "dia:otro" and ctx.estado == Estado.ELIGIENDO_HORA:
             ctx.ir(Estado.ELIGIENDO_DIA)
             return self._lista_dias(ctx, e, ahora)
-        valor = entrada.split(":", 1)[1]
+        valor = entrada.partition(":")[2]
         if ctx.estado != Estado.ELIGIENDO_DIA or valor not in ctx.dias_ofrecidos:
             return self._reofrecer(ctx, e, ahora, desconocido=True)
         ctx.fecha = valor
@@ -373,7 +373,7 @@ class Agente:
         return [salida]
 
     def _on_hora(self, entrada: str, e: Entrante, ctx: Contexto, ahora: datetime) -> list[Saliente]:
-        valor = entrada.split(":", 1)[1]
+        valor = entrada.partition(":")[2]
         # CONFIRMANDO solo se alcanza tocando una hora que el propio sistema ofreció (EARS-CON-03)
         if ctx.estado != Estado.ELIGIENDO_HORA or valor not in ctx.horas_ofrecidas:
             return self._reofrecer(ctx, e, ahora, desconocido=True)
@@ -579,9 +579,7 @@ class Agente:
             return [*previo, *self._lista_horas(ctx, e, ahora)]
         if estado == Estado.CONFIRMANDO:
             return [*previo, self._resumen(ctx)]
-        if estado == Estado.GESTIONANDO_CITA:
-            return [*previo, *self._listar_citas(e, ctx, ahora)]
-        return [*previo, *self._menu(ctx)]
+        return [*previo, *self._listar_citas(e, ctx, ahora)]  # GESTIONANDO_CITA
 
 
 def _mediodia(d: date, zona: ZoneInfo) -> datetime:
