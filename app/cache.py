@@ -74,6 +74,10 @@ class CacheDisponibilidad:
             )
         return bloques
 
+    def reiniciar(self) -> None:
+        """Olvida la frescura del espejo (reinicio total de la demo)."""
+        self._espejo_valido_hasta.clear()
+
     def invalidar(self, calendario_id: str, fecha: date | None = None) -> None:
         """Descarta el caché de un día (o de todos) y marca el espejo como desactualizado."""
         with unidad_de_trabajo(self._engine) as s:
