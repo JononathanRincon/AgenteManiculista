@@ -3,9 +3,47 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Demo — Agenda de manicura</title>
+<title>Demo de agenda para manicura</title>
+<link rel="stylesheet" href="/demo/static/estilos.css">
 </head>
 <body>
-<main><h1>Demo</h1><p>Interfaz en construcción.</p></main>
+<header class="barra">
+  <div class="marca">
+    <h1>Agenda de manicura</h1>
+    <p class="sub">Demo con datos de ejemplo · nada de esto es real</p>
+  </div>
+  <div class="acciones">
+    <button id="btn-carrera" class="btn btn-acento" type="button">Dos confirmaciones simultáneas</button>
+    <button id="btn-reiniciar" class="btn" type="button">Reiniciar</button>
+  </div>
+</header>
+
+<div id="banner" class="banner" role="status" aria-live="polite" hidden></div>
+
+<main class="tablero">
+  <section class="panel chat" aria-labelledby="titulo-chat">
+    <h2 id="titulo-chat" class="panel-titulo">
+      <span class="avatar" aria-hidden="true">💅</span> Chat de WhatsApp
+      <span class="tel" id="tel-visible"></span>
+    </h2>
+    <div id="mensajes" class="mensajes" role="log" aria-live="polite" aria-label="Conversación"></div>
+    <form id="formulario" class="entrada" autocomplete="off">
+      <label for="texto" class="solo-lectores">Escribe un mensaje</label>
+      <input id="texto" name="texto" type="text" maxlength="500" placeholder="Escribe un mensaje…" enterkeyhint="send">
+      <button class="btn btn-enviar" type="submit" aria-label="Enviar">Enviar</button>
+    </form>
+  </section>
+
+  <section class="panel calendario" aria-labelledby="titulo-cal">
+    <h2 id="titulo-cal" class="panel-titulo"><span aria-hidden="true">📅</span> Calendario de la manicurista</h2>
+    <p class="leyenda">
+      <span class="chip chip-confirmada">Confirmada</span>
+      <span class="chip chip-apartada">Apartada (confirmando…)</span>
+    </p>
+    <div id="agenda" class="agenda" aria-live="polite"></div>
+  </section>
+</main>
+
+<script src="/demo/static/app.js"></script>
 </body>
 </html>
