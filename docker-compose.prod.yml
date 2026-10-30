@@ -1,0 +1,16 @@
+# Pruebas "tipo producción" en tu equipo: Calendar real y WhatsApp real (sidecar), sin simulador.
+# Uso:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile whatsapp up -d --build
+# Requiere en .env: SIDECAR_TOKEN, WEBHOOK_SECRET, ADMIN_TOKEN (>= 32 caracteres al azar).
+# La clave de la cuenta de servicio va en ./secrets/google.json (la carpeta no se versiona).
+# Los cambios en ./config se aplican reiniciando: docker compose ... restart app
+services:
+  app:
+    environment:
+      ENTORNO: "produccion"
+      SIMULADOR: "false"
+      PROVEEDOR_LLM: "${PROVEEDOR_LLM:-none}"
+      GOOGLE_SERVICE_ACCOUNT_JSON: "/run/secrets/google.json"
+    volumes:
+      - ./secrets/google.json:/run/secrets/google.json:ro
+      - ./config:/srv/config:ro
