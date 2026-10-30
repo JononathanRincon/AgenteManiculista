@@ -209,7 +209,7 @@
   - Test: `pytest tests/integration/test_reservas.py -q`
   - Hecho cuando: un bloque tomado deshace toda la transacción y reconfirmar devuelve la misma reserva.
 
-- [ ] **TASK-15** · Probar la concurrencia: la carrera de confirmaciones
+- [x] **TASK-15** · Probar la concurrencia: la carrera de confirmaciones
   - Objetivo: demostrar que exactamente una gana, incluso con servicios de distinta duración.
   - Trazabilidad: US-07, NFR-INT-01, EC-01, EC-02 · Plan: 6.2
   - Diseño: design.md §B4.5
