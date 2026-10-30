@@ -219,7 +219,7 @@
   - Test: `pytest tests/integration/test_concurrencia.py -q`
   - Hecho cuando: 0 pares de reservas activas con bloques solapados y la perdedora recibe `HorarioOcupado`.
 
-- [ ] **TASK-16** · Implementar la cola: encolar, reclamar FIFO e idempotencia
+- [x] **TASK-16** · Implementar la cola: encolar, reclamar FIFO e idempotencia
   - Objetivo: cola en SQLite con reclamo atómico por `BEGIN IMMEDIATE`.
   - Trazabilidad: US-07, EARS-COL-01, EARS-COL-02 · Plan: 6.3
   - Diseño: design.md §1.5, §B4.2
