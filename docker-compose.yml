@@ -1,0 +1,19 @@
+# Entorno de desarrollo. Una sola instancia y un solo proceso.
+# Los secretos se inyectan por entorno (archivo .env local, nunca versionado).
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      SIMULADOR: "true"
+      PROVEEDOR_LLM: "none"
+      DATABASE_URL: "sqlite:////data/agenda.db"
+    volumes:
+      - agenda_data:/data
+
+volumes:
+  agenda_data:

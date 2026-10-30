@@ -589,3 +589,39 @@
 - **Intentos del bucle interno:** 1/3 (el aviso de pytest-asyncio se corrigió fijando el scope del loop)
 - **Estado actualizado:** tasks.md TASK-02 `[x]`
 - **Pendientes o riesgos:** El Python 3.12 gestionado por uv vive fuera del proyecto; `make install` lo necesita en `UV_PYTHON_INSTALL_DIR` en este equipo. Python 3.14 del sistema no se usa. `google-genai 2.34.0` y demás APIs se verifican en documentación al usarlas.
+
+## Entrada 10 — 2026-10-30 — TASK-03: Dockerfile multi-stage y compose de desarrollo
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code
+- **Fase / tarea:** Fase 2 — Infraestructura · TASK-03
+- **Prompt utilizado (literal):**
+  ```text
+  Apruebo derivados   [continuación del loop: siguiente tarea del Bloque 0]
+  ```
+- **Output del agente (mensaje final):**
+  ```text
+  Dockerfile multi-stage (builder con uv y lockfile, runtime mínimo), usuario no root uid 10001, HEALTHCHECK sobre /health,
+  uvicorn con --workers 1, volumen /data para SQLite. docker-compose.yml de desarrollo, .dockerignore y .env.example comentado sin valores.
+  ```
+- **Archivos creados o modificados:**
+  | Archivo | Líneas | Cambio |
+  |---|---|---|
+  | `Dockerfile`, `docker-compose.yml`, `.dockerignore`, `.env.example` | todo | Creados |
+- **Patrones y principios aplicados:** Multi-stage, mínimo privilegio, secretos solo por entorno, imagen base fijada (`python:3.12.16-slim`, tag verificado con `docker manifest inspect`).
+- **Comandos de terminal ejecutados:**
+  ```bash
+  docker manifest inspect python:3.12.16-slim   # existe
+  docker compose build                          # OK
+  docker image inspect ...                      # Usuario "app"; HEALTHCHECK declarado
+  ```
+- **Acciones de Git:** Rama `feature/TASK-03-docker`; commit y merge ver `git log` de develop.
+- **Dependencias agregadas:** Ninguna (uv 0.13.6 solo dentro de la etapa builder de la imagen).
+- **Reporte de pruebas:**
+  | Suite / nivel | Total | ✅ Pasaron | ❌ Fallaron | Cobertura ramas (medida) |
+  |---|---|---|---|---|
+  | `docker compose build` | 1 | 1 | 0 | no aplica |
+- **Casos ejecutados:**
+  - [x] Build de la imagen; usuario no root; HEALTHCHECK presente (NFR-DES-01)
+- **Intentos del bucle interno:** 1/3
+- **Estado actualizado:** tasks.md TASK-03 `[x]`
+- **Pendientes o riesgos:** "Servicios healthy" del criterio de la tarea se verifica cuando exista `app/main.py` con `/health` (TASK-31/44); hoy el contenedor no arranca por falta de la app. `.env.example` se valida contra `Settings` en TASK-06. Trivy/SBOM quedan para el pipeline.
