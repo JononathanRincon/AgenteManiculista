@@ -115,3 +115,47 @@ def test_yaml_raiz_no_es_mapa(tmp_path: Path) -> None:
 def test_zona_horaria_invalida(tmp_path: Path) -> None:
     with pytest.raises(ConfiguracionInvalida, match="zona_horaria"):
         cargar_config(_copiar(tmp_path, zona_horaria="Mars/Base"))
+
+
+def test_anti_ban_valores_por_defecto_y_pausa_humana() -> None:
+    cfg = cargar_config(RAIZ / "config")
+    ab = cfg.negocio.anti_ban
+    assert (ab.debounce_segundos, ab.lectura_min_ms, ab.lectura_max_ms) == (4.5, 1500, 3000)
+    assert (ab.escritura_ms_por_caracter, ab.escritura_min_ms, ab.escritura_max_ms) == (
+        45,
+        2500,
+        6000,
+    )
+    assert (ab.jitter_min_ms, ab.jitter_max_ms) == (-400, 600)
+    assert (ab.max_mensajes_por_telefono, ab.ventana_limite_minutos) == (15, 10)
+    assert cfg.negocio.pausa_intervencion_humana_minutos == 120
+
+
+@pytest.mark.parametrize(
+    "cambio",
+    [
+        {"lectura_min_ms": 4000},
+        {"escritura_min_ms": 7000},
+        {"jitter_min_ms": 700},
+        {"max_mensajes_globales": 5},
+        {"debounce_segundos": -1},
+        {"max_mensajes_por_telefono": 0},
+        {"ventana_limite_minutos": 0},
+    ],
+)
+def test_anti_ban_fuera_de_rango_impide_el_arranque(
+    tmp_path: Path, cambio: dict[str, object]
+) -> None:
+    negocio = yaml.safe_load((RAIZ / "config/negocio.yaml").read_text(encoding="utf-8"))
+    negocio["anti_ban"].update(cambio)
+    (tmp_path / "negocio.yaml").write_text(yaml.safe_dump(negocio), encoding="utf-8")
+    (tmp_path / "servicios.yaml").write_text(
+        (RAIZ / "config/servicios.yaml").read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    with pytest.raises(ConfiguracionInvalida, match="anti_ban"):
+        cargar_config(tmp_path)
+
+
+def test_pausa_humana_debe_ser_positiva(tmp_path: Path) -> None:
+    with pytest.raises(ConfiguracionInvalida, match="pausa_intervencion_humana_minutos"):
+        cargar_config(_copiar(tmp_path, pausa_intervencion_humana_minutos=0))

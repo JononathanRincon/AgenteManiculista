@@ -573,7 +573,7 @@
 
 ### Tareas agregadas por la v0.4 (ADR-009: transporte Baileys con controles anti-ban)
 
-- [ ] **TASK-63** · Agregar la configuración anti-ban y las tablas del transporte
+- [x] **TASK-63** · Agregar la configuración anti-ban y las tablas del transporte
   - Objetivo: `AntiBan` y `pausa_intervencion_humana_minutos` en `negocio.yaml`; columna `pausa_humana_hasta`; tablas `opciones_ofrecidas` y `envios_recientes`.
   - Trazabilidad: US-14, EARS-WA-17, EARS-WA-18, NFR-ANT-01 · Plan: 10.6
   - Diseño: design.md §B8.1

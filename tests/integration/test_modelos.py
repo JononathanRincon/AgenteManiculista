@@ -129,3 +129,31 @@ def test_segunda_escritura_espera_mientras_otra_tiene_begin_immediate(engine: En
         hilo.join()
     with unidad_de_trabajo(engine, escritura=False) as s:
         assert s.query(Metrica).count() == 1
+
+
+def test_tablas_del_transporte_y_pausa_humana(engine: Engine) -> None:
+    from app.modelos import EnvioReciente, OpcionesOfrecidas
+
+    with unidad_de_trabajo(engine) as s:
+        s.add(
+            Conversacion(
+                telefono="573001",
+                estado="INICIO",
+                actualizado_en=AHORA,
+                pausa_humana_hasta=AHORA + timedelta(hours=2),
+            )
+        )
+        s.add(
+            OpcionesOfrecidas(
+                telefono="573001", opciones='[{"id": "a", "titulo": "A"}]', actualizado_en=AHORA
+            )
+        )
+        s.add_all([EnvioReciente(telefono="573001", enviado_en=AHORA) for _ in range(3)])
+    with unidad_de_trabajo(engine, escritura=False) as s:
+        assert s.get(Conversacion, "573001").pausa_humana_hasta == AHORA + timedelta(hours=2)  # type: ignore[union-attr]
+        assert s.get(OpcionesOfrecidas, "573001") is not None
+        assert len(s.query(EnvioReciente).all()) == 3
+    with unidad_de_trabajo(engine) as s:  # un teléfono sin pausa conserva el valor nulo
+        s.add(Conversacion(telefono="573002", estado="INICIO", actualizado_en=AHORA))
+    with unidad_de_trabajo(engine, escritura=False) as s:
+        assert s.get(Conversacion, "573002").pausa_humana_hasta is None  # type: ignore[union-attr]
