@@ -603,7 +603,7 @@
   - Test: `pytest tests/unit/test_menus_numericos.py -q`
   - Hecho cuando: un número fuera de rango no cambia el estado y `CONFIRMANDO` sigue inalcanzable sin una hora ofrecida.
 
-- [ ] **TASK-66** · Implementar el acumulador (debounce por teléfono)
+- [x] **TASK-66** · Implementar el acumulador (debounce por teléfono)
   - Objetivo: concatenar mensajes seguidos y responder una sola vez.
   - Trazabilidad: US-14, EARS-WA-16, EC-21 · Plan: 10.6
   - Diseño: design.md §B8.2, §B8.4
