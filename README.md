@@ -80,6 +80,20 @@ El simulador usa un calendario en memoria, muestra la conversación y permite ve
 dos clientas por el mismo horario: una se confirma y la otra recibe una disculpa. No necesita
 Google, WhatsApp ni Gemini.
 
+### Probar "como producción" en tu equipo (Calendar y WhatsApp reales)
+
+1. Crea la cuenta de servicio de Google y guarda su clave en `secrets/google.json` (carpeta ignorada
+   por git); comparte un calendario **de prueba** con su correo ("Hacer cambios en los eventos") y
+   pon su id en `config/negocio.yaml` → `calendario_id`.
+2. En `.env`: `SIDECAR_TOKEN`, `WEBHOOK_SECRET`, `ADMIN_TOKEN` (≥ 32 caracteres al azar) y, si quieres
+   Gemini, `PROVEEDOR_LLM=gemini`, `GEMINI_API_KEY` y `GEMINI_TIER=paid` (en producción el tier
+   gratuito se rechaza). Sin `.env` de Gemini, `PROVEEDOR_LLM=none` funciona completo.
+3. `docker compose -f docker-compose.yml -f docker-compose.prod.yml --profile whatsapp up -d --build`
+4. Vincula un **número de prueba** abriendo el QR (`/admin/whatsapp/qr` con la cabecera
+   `X-Admin-Token`) y revisa `GET http://localhost:8000/health`.
+5. Sin una URL HTTPS pública (`CALENDAR_WEBHOOK_URL`) el sistema queda en modo degradado: funciona y
+   refresca el calendario cada 5 minutos.
+
 ### Despliegue con Docker
 
 ```bash

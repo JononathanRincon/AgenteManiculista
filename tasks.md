@@ -746,6 +746,16 @@
   - Test: `docker compose --profile whatsapp build` y el job de CI en verde
   - Hecho cuando: Trivy no reporta HIGH/CRITICAL con corrección disponible en el sidecar.
 
+- [x] **TASK-76** · Agregar el compose de pruebas tipo producción (`docker-compose.prod.yml`)
+  - Objetivo: poder probar con Calendar real y WhatsApp real desde el equipo del desarrollador sin editar el compose base.
+  - Trazabilidad: NFR-DES-01 · Plan: 11.8
+  - Diseño: design.md §5
+  - Skill: `ci-cd-and-automation`
+  - Archivos: `docker-compose.prod.yml`, `README.md`
+  - Entregable: override con `ENTORNO=produccion`, `SIMULADOR=false`, la clave de Google montada como archivo y `config/` editable sin reconstruir
+  - Test: `docker compose -f docker-compose.yml -f docker-compose.prod.yml config`
+  - Hecho cuando: el compose resuelve sin errores y el README explica el uso.
+
 ## Bloque 10 — Documentación (Fase 12)
 *Skills:* `documentation-and-adrs`
 
