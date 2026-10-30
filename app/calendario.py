@@ -33,6 +33,7 @@ from googleapiclient.errors import HttpError  # type: ignore[import-untyped]
 
 from app.config import ConfiguracionInvalida
 from app.puertos import (
+    CanalCalendar,
     CuotaExcedida,
     ErrorPermanente,
     ErrorSyncTokenExpirado,
@@ -172,6 +173,32 @@ class CalendarioGoogle:
             privadas = item.get("extendedProperties", {}).get("private", {})
             citas.append(EventoCita(item["id"], *horario, _entero(privadas.get("reserva_id"))))
         return citas
+
+    # --- canales push (events.watch) -----------------------------------------------------------
+    def registrar_canal(
+        self, calendario_id: str, *, canal_id: str, url: str, token: str, ttl_s: int
+    ) -> CanalCalendar:
+        cuerpo = {
+            "id": canal_id,
+            "type": "web_hook",
+            "address": url,
+            "token": token,
+            "params": {"ttl": str(ttl_s)},
+        }
+        respuesta = self._ejecutar(
+            self._servicio().events().watch(calendarId=calendario_id, body=cuerpo)
+        )
+        try:
+            expira = datetime.fromtimestamp(int(respuesta["expiration"]) / 1000, UTC)
+            return CanalCalendar(respuesta["id"], respuesta["resourceId"], expira)
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ErrorPermanente("Google devolvió un canal incompleto") from exc
+
+    def detener_canal(self, canal_id: str, resource_id: str) -> None:
+        peticion = (
+            self._servicio().channels().stop(body={"id": canal_id, "resourceId": resource_id})
+        )
+        self._ejecutar(peticion, ignorar=(404,))
 
     # --- internos ----------------------------------------------------------------------------
     def _servicio(self) -> Servicio:

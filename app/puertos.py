@@ -112,6 +112,27 @@ class Calendario(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class CanalCalendar:
+    """Canal de notificaciones push (`events.watch`) registrado en Google."""
+
+    id: str
+    resource_id: str
+    expira_en: datetime
+
+
+class CanalesCalendario(Protocol):
+    def registrar_canal(
+        self, calendario_id: str, *, canal_id: str, url: str, token: str, ttl_s: int
+    ) -> CanalCalendar:
+        """Pide a Google que avise cambios del calendario a `url`."""
+        ...
+
+    def detener_canal(self, canal_id: str, resource_id: str) -> None:
+        """Detiene un canal; si ya expiró (404) cuenta como éxito."""
+        ...
+
+
 # --- Mensajería --------------------------------------------------------------------------------
 @dataclass(frozen=True)
 class Opcion:
