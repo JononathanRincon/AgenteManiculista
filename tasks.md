@@ -70,7 +70,7 @@
 ## Bloque 1 — Modelos y configuración (Fase 3)
 *Skills:* `incremental-implementation`, `test-driven-development`, `source-driven-development`
 
-- [ ] **TASK-05** · Cargar y validar `negocio.yaml` y `servicios.yaml` con domicilio parametrizable
+- [x] **TASK-05** · Cargar y validar `negocio.yaml` y `servicios.yaml` con domicilio parametrizable
   - Objetivo: configuración inmutable validada al arrancar; domicilio habilitado exige recargo.
   - Trazabilidad: US-09, US-06, EARS-CFG-01, EARS-CFG-02, EARS-DOM-05 · Plan: 3.1
   - Diseño: design.md §B1.1, §B1.2, §B1.4

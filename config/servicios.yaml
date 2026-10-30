@@ -1,0 +1,6 @@
+# Catálogo de servicios. Los precios son de EJEMPLO hasta que la dueña defina los reales.
+servicios:
+  - {id: manicure_tradicional, nombre: "Manicure tradicional", duracion_min: 45, precio_cop: 30000, descripcion: "Limado, cutícula y esmaltado (precio de ejemplo)", domicilio_permitido: true}
+  - {id: semipermanente, nombre: "Semipermanente", duracion_min: 75, precio_cop: 50000, descripcion: "Esmaltado de larga duración (precio de ejemplo)", domicilio_permitido: true}
+  - {id: acrilicas, nombre: "Acrílicas", duracion_min: 150, precio_cop: 120000, descripcion: "Uñas acrílicas completas (precio de ejemplo)", domicilio_permitido: false}
+  - {id: retiro, nombre: "Retiro", duracion_min: 30, precio_cop: 15000, descripcion: "Retiro de esmalte o acrílico (precio de ejemplo)", domicilio_permitido: true}
