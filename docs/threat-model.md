@@ -30,6 +30,10 @@ Datos personales de clientas (teléfono, nombre de perfil, dirección de domicil
 | T12 | Service account | Clave filtrada | Elevation | Variable de entorno, permiso sobre un solo calendario, rotación | NFR-SEG-02 | TASK-02 (escaneo) |
 | T13 | Dirección de domicilio | Exposición en el evento a terceros | Information disclosure | El calendario es privado de la dueña; la dirección se borra de la BD al cerrar la cita | SDD §6.5 | TASK-25 |
 | T14 | Repudio de acciones | La clienta niega haber cancelado | Repudiation | Registro de cambios de estado de la reserva con marca de tiempo y teléfono enmascarado | NFR-OBS-01 | TASK-44 |
+| T15 | Aviso falso a `/webhook/calendar` | Quien conoce la URL fuerza resincronizaciones y gasta cuota | Spoofing / DoS | Token de canal ≥ 32 caracteres comparado en tiempo constante, 403 sin él, límite de fallos por origen que no bloquea los avisos válidos | EARS-CAC-02 | TASK-46, TASK-74 |
+| T16 | Fallo de Calendar confirma una cita sin evento | Un 409 sobre el id de un evento borrado se tomaría por éxito | Tampering | Tras un 409 se consulta el evento: si falta o está cancelado se falla; solo `crear_evento` correcto lleva a CONFIRMADA | EARS-COL-03 | TASK-45 |
+| T17 | Simulador en producción | `SIMULADOR=true` confirmaría citas sin evento real | Tampering | La configuración prohíbe `SIMULADOR` con `ENTORNO=produccion` | NFR-SEG-01 | TASK-74 |
 
 ## Riesgo residual aceptado
 Evento manual de la dueña creado en los milisegundos entre la verificación en vivo y el `events.insert`: Calendar no impide solapes. Ventana de milisegundos; la dueña lo ve en su celular.
+Calendario enorme o con recurrencias infinitas: el listado completo (sin `timeMin`/`timeMax`, para obtener un sync token válido) puede agotar las 100 páginas y fallar; se documenta en el runbook. Rotar `CALENDAR_CHANNEL_TOKEN` exige forzar la renovación del canal (Google sigue enviando el token anterior hasta que expira).
