@@ -12,6 +12,9 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --no-audit --no-fund
 
 FROM node:22.19.0-slim AS runtime
+# La imagen base fijada queda atrás de los parches de Debian: se aplican las correcciones del
+# sistema y se quita npm/corepack, que no se usan en ejecución (menos superficie y sin sus CVE).
+RUN apt-get update     && apt-get upgrade -y --no-install-recommends     && rm -rf /var/lib/apt/lists/*     && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack         /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
 ENV NODE_ENV=production \
     AUTH_DIR=/data/baileys_auth \
     PORT=3000
