@@ -139,12 +139,12 @@
 
 ### Fase 11 — Calendar real y push (Bloque 9)
 *Skills:* `source-driven-development`, `security-and-hardening`, `test-driven-development`
-- [ ] **11.1** Adaptador Google Calendar
-- [ ] **11.2** `events.watch`, `/webhook/calendar` y renovación
-- [ ] **11.3** Modo degradado
-- [ ] **11.4** Revisión del bloque
-- [ ] **11.5** Cableado de producción (TASK-73)
-- [ ] **11.6** Correcciones de la auditoría del bloque (TASK-74)
+- [x] **11.1** Adaptador Google Calendar
+- [x] **11.2** `events.watch`, `/webhook/calendar` y renovación
+- [x] **11.3** Modo degradado
+- [x] **11.4** Revisión del bloque
+- [x] **11.5** Cableado de producción (TASK-73)
+- [x] **11.6** Correcciones de la auditoría del bloque (TASK-74)
 
 ### Fase 12 — Documentación (Bloque 10)
 *Skills:* `documentation-and-adrs`

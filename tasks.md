@@ -706,7 +706,7 @@
   - Test: `pytest tests/integration/test_modo_degradado.py -q`
   - Hecho cuando: sin canal válido el refresco corre cada 5 min y queda el log `modo_degradado`.
 
-- [ ] **TASK-60** · Revisión del Bloque 9
+- [x] **TASK-60** · Revisión del Bloque 9
   - Objetivo: cerrar el bloque.
   - Trazabilidad: NFR-CAL-01 · Plan: 11.4
   - Diseño: design.md §B9.5

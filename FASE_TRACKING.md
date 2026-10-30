@@ -149,17 +149,17 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 ## Fase 11 — Calendar real y push (Bloque 9)
 > **Criterio de desbloqueo:** Fase 10 cerrada.
 
-- [ ] ⏳ **11.1 Calendar real, push y modo degradado**
-  - [ ] **Integración:** `test_calendario_google.py`, `test_push.py`, `test_modo_degradado.py`
+- [x] ✅ **11.1 Calendar real, push y modo degradado**
+  - [x] **Integración:** `test_calendario_google.py`, `test_push.py`, `test_modo_degradado.py`
   - Tareas: TASK-45 … TASK-47, TASK-60
   - Tareas adicionales: TASK-73, TASK-74
-  - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida)
-  - Cierre: <fecha> · AI_PROCESS #<N>
+  - Pruebas: pasadas 808 · fallidas 0 · cobertura ramas 99 % (medida)
+  - Cierre: 2026-10-30 · AI_PROCESS #21
 
 ## Fase 12 — Documentación (Bloque 10)
 > **Criterio de desbloqueo:** Fase 11 cerrada.
 
-- [ ] 🕓 **12.1 README, manual de la clienta, runbook y CHANGELOG**
+- [ ] ⏳ **12.1 README, manual de la clienta, runbook y CHANGELOG**
   - Tareas: TASK-48 … TASK-50
   - Cierre: <fecha> · AI_PROCESS #<N>
 
