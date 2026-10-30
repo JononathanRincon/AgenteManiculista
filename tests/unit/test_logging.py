@@ -68,7 +68,7 @@ def test_los_tokens_y_secretos_se_ocultan(registro: tuple[logging.Logger, io.Str
     logger, flujo = registro
     secretos = [
         "Authorization: Bearer abc.def-123",
-        "AIzaSyA1234567890abcdefghijklmnopqrstuvw",
+        "AIza" + "SyA1234567890abcdefghijklmnopqrstuvw",  # partido para no parecer una clave real
         "EAAGm0PX4ZCpsBAKZCzzZCexampletoken12345",
         "api_key=supersecreto",
         "token: otro-secreto",

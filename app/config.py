@@ -58,17 +58,17 @@ class Domicilio(_Modelo):
 class AntiBan(_Modelo):
     """Controles anti-bloqueo del transporte de WhatsApp (ADR-009)."""
 
-    debounce_segundos: float = Field(4.5, ge=0, le=30)
-    lectura_min_ms: int = Field(1500, ge=0)
-    lectura_max_ms: int = Field(3000, ge=0)
-    escritura_ms_por_caracter: int = Field(45, ge=0)
-    escritura_min_ms: int = Field(2500, ge=0)
-    escritura_max_ms: int = Field(6000, ge=0)
+    debounce_segundos: Annotated[float, Field(ge=0, le=30)] = 4.5
+    lectura_min_ms: Annotated[int, Field(ge=0)] = 1500
+    lectura_max_ms: Annotated[int, Field(ge=0)] = 3000
+    escritura_ms_por_caracter: Annotated[int, Field(ge=0)] = 45
+    escritura_min_ms: Annotated[int, Field(ge=0)] = 2500
+    escritura_max_ms: Annotated[int, Field(ge=0)] = 6000
     jitter_min_ms: int = -400
     jitter_max_ms: int = 600
-    max_mensajes_por_telefono: int = Field(15, gt=0)
-    ventana_limite_minutos: int = Field(10, gt=0)
-    max_mensajes_globales: int = Field(120, gt=0)
+    max_mensajes_por_telefono: Annotated[int, Field(gt=0)] = 15
+    ventana_limite_minutos: Annotated[int, Field(gt=0)] = 10
+    max_mensajes_globales: Annotated[int, Field(gt=0)] = 120
 
     @model_validator(mode="after")
     def _rangos_coherentes(self) -> Self:
