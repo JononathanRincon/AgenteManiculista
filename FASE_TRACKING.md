@@ -66,17 +66,17 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 ## Fase 3 — Modelos y configuración (Bloque 1)
 > **Criterio de desbloqueo:** Fase 2 cerrada con 100 % de tests en verde.
 
-- [ ] ⏳ **3.1 Configuración, modelos y mensajes**
-  - [ ] **Unitarias:** `tests/unit/test_config.py`, `test_settings.py`, `test_mensajes.py`
-  - [ ] **Integración:** `tests/integration/test_modelos.py`
+- [x] ✅ **3.1 Configuración, modelos y mensajes**
+  - [x] **Unitarias:** `tests/unit/test_config.py`, `test_settings.py`, `test_mensajes.py`
+  - [x] **Integración:** `tests/integration/test_modelos.py`
   - Tareas: TASK-05 … TASK-08, TASK-52
-  - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida)
-  - Cierre: <fecha> · AI_PROCESS #<N>
+  - Pruebas: pasadas 44 · fallidas 0 · fallidas 0 · cobertura ramas 99 % (medida)
+  - Cierre: 2026-10-30 · AI_PROCESS #12
 
 ## Fase 4 — Disponibilidad (Bloque 2)
 > **Criterio de desbloqueo:** Fase 3 cerrada.
 
-- [ ] 🕓 **4.1 Disponibilidad y puerto Calendario**
+- [ ] ⏳ **4.1 Disponibilidad y puerto Calendario**
   - [ ] **Unitarias:** `tests/unit/test_disponibilidad.py`, `test_calendario_falso.py`
   - Tareas: TASK-09 … TASK-11, TASK-53
   - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida; objetivo 100 %)
