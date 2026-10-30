@@ -779,3 +779,23 @@
 - **Aprobación:** el usuario autorizó la actualización por chat; el texto resultante de la v0.4 no ha sido leído por el usuario, por lo que §20.2 lo deja registrado como pendiente de confirmación.
 - **Pruebas:** no aplica (solo documentación); la suite completa sigue verde.
 - **Estado actualizado:** Bloque 8 con 10 tareas nuevas; siguiente en el backlog: Bloque 6 (TASK-30).
+
+## Entrada 18 — 2026-10-30 — Bloque 6 completo: TASK-30 a 34 y 57 (Fase 8, simulador)
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code
+- **Fase / tarea:** Fase 8 — Simulador · TASK-30 a TASK-34 y TASK-57
+- **Prompt utilizado (literal):** continuación de "hagas todos los bloques de una vez" y del cambio de requisito del transporte Baileys (entrada 17).
+- **Output del agente (resumen):**
+  - `app/simulador/transporte.py` (`TransporteSimulado`, implementa `Mensajeria`), `app/simulador/demo.py` (`Demo`: mismo `Agente`, `reservar` y `Worker` que producción; calendario en vivo, reinicio total, prueba de carrera con dos clientas ficticias y confirmaciones simultáneas en hilos).
+  - `app/main.py` (fábrica `crear_app`, `lifespan` con worker y limpieza, `/health`, verificación de un solo proceso, cabeceras de seguridad en `/demo`), `app/simulador/rutas.py` (rutas condicionales a `SIMULADOR=true`, SSE, validación estricta, límite de tasa por IP), `app/limite_tasa.py`.
+  - Interfaz `/demo`: `index.html`, `estilos.css`, `app.js` (sin scripts ni estilos en línea por la CSP, `textContent` en vez de `innerHTML`, objetivos táctiles de 44 px, modo oscuro, apila el chat sobre el calendario en formato vertical).
+  - `render.yaml` de la demo (plan `free`, una instancia, `healthCheckPath: /health`, `autoDeployTrigger: "off"`); no se desplegó.
+- **Documentación oficial consultada:** blueprint spec de Render (campos `runtime`, `plan`, `numInstances`, `healthCheckPath`, `envVars`, `disk`, `autoDeployTrigger`), documentación de discos de Render (solo servicios de pago; sin zero-downtime; una instancia) y de servicios gratuitos (se duermen a los 15 min, ~1 min de arranque en frío, 750 h/mes, sin disco). La página de precios no mostró importes: el costo de un plan de pago se verifica al decidir TASK-61.
+- **Verificación visual (navegador integrado):** capturas en horizontal y en vertical (405×720); la conversación completa de agendar, el calendario en vivo (apartada → confirmada por SSE) y la prueba de carrera ("Cita confirmada: Valentina · Rechazada: Camila — Ese horario se acaba de ocupar") funcionan. Hallazgos corregidos: animación que se repetía en cada refresco (solo anima lo nuevo) y encabezado de día con "De" en mayúscula.
+- **Defectos encontrados por las pruebas:** (1) con un `inicio` explícito con zona distinta de UTC la carrera rechazaba un horario libre (los ids de hora van en UTC) → corregido; (2) un id de botón sin `:` (en el agente, Bloque 5) → corregido antes.
+- **Contenedor:** `docker compose build` correcto; la imagen corre como usuario 10001 y responde `200` en `/health` y `/demo` con `SIMULADOR=true`.
+- **Dependencias agregadas:** ninguna (httpx ya estaba; `fastapi.testclient` lo usa).
+- **Reporte de pruebas:** 391 pruebas pasaron en la medición del bloque, 0 fallaron; cobertura de ramas medida: simulador (demo, rutas, transporte, calendario falso) 100 %, `main.py` 100 %, `limite_tasa.py` 100 %; total del proyecto 99 %.
+- **Intentos del bucle interno:** 1/3 por tarea.
+- **Pendientes:** el servidor local de la demo se detuvo; el despliegue en Render (TASK-61) exige confirmación del usuario y elegir plan.
+- **Estado actualizado:** tasks.md TASK-30 a 34 y 57 `[x]`; Fase 8 `✅`; Fase 9 `⏳`.

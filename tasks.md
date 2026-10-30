@@ -435,7 +435,7 @@
   - Test: `docker compose build`
   - Hecho cuando: la imagen arranca con `SIMULADOR=true` y `/demo` responde localmente.
 
-- [ ] **TASK-57** · Revisión del Bloque 6
+- [x] **TASK-57** · Revisión del Bloque 6
   - Objetivo: cerrar el bloque con revisión y prueba visual.
   - Trazabilidad: NFR-CAL-01 · Plan: 8.6
   - Diseño: design.md §B6.5
