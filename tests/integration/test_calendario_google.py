@@ -8,7 +8,7 @@ import json
 import socket
 import threading
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
@@ -519,3 +519,15 @@ def test_una_hora_sin_desfase_se_lee_en_la_zona_del_evento_o_la_del_negocio() ->
     cal, _ = _calendario(lambda *_: _pagina(sin_zona))
     [intervalo] = cal.ocupacion_en_vivo(CAL, _local(3, 0), _local(4, 0))
     assert (intervalo.inicio, intervalo.fin) == (_local(3, 9), _local(3, 10))
+
+
+@pytest.mark.parametrize("sync_token", [None, "T1"])
+def test_un_evento_futuro_fuera_de_la_ventana_entra_al_espejo(sync_token: str | None) -> None:
+    # Google no reenvía lo que no cambió: si se descartara hoy, nunca llegaría cuando la ventana
+    # avance y el bot ofrecería una hora ya ocupada.
+    lejano = _evento(
+        "lejano", _local(30, 9) + timedelta(days=60), _local(30, 10) + timedelta(days=60)
+    )
+    cal, _ = _calendario(lambda *_: _pagina(lejano, nextSyncToken="T"))
+    [evento] = cal.listar_eventos(CAL, sync_token=sync_token, desde=DESDE, hasta=HASTA).eventos
+    assert (evento.event_id, evento.cancelado) == ("lejano", False)

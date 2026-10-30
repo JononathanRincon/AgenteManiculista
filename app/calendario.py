@@ -86,8 +86,8 @@ class CalendarioGoogle:
     def listar_eventos(
         self, calendario_id: str, *, sync_token: str | None, desde: datetime, hasta: datetime
     ) -> ResultadoListado:
-        # La ventana se aplica aquí y no en la consulta: con timeMin/timeMax Google no entrega
-        # un sync token utilizable.
+        # El pasado se descarta aquí y no en la consulta: con timeMin/timeMax Google no entrega
+        # un sync token utilizable. Los eventos futuros se guardan todos (`hasta` no se usa).
         parametros: dict[str, Any] = {
             "calendarId": calendario_id,
             "singleEvents": True,
@@ -99,7 +99,7 @@ class CalendarioGoogle:
         incremental = sync_token is not None
         eventos: list[EventoCalendario] = []
         for item in items:
-            evento = self._a_evento(item, desde, hasta, incremental=incremental)
+            evento = self._a_evento(item, desde, incremental=incremental)
             if evento is not None:
                 eventos.append(evento)
         return ResultadoListado(eventos, token, resincronizacion_completa=not incremental)
@@ -250,7 +250,7 @@ class CalendarioGoogle:
             raise ErrorPermanente("el id del evento pertenece a un evento eliminado")
 
     def _a_evento(
-        self, item: dict[str, Any], desde: datetime, hasta: datetime, *, incremental: bool
+        self, item: dict[str, Any], desde: datetime, *, incremental: bool
     ) -> EventoCalendario | None:
         if item.get("status") == "cancelled":  # en el listado completo el espejo ya está vacío
             return (
@@ -262,9 +262,9 @@ class CalendarioGoogle:
         if horario is None:
             return None
         inicio, fin = horario
-        if inicio < hasta and fin > desde:
-            return EventoCalendario(item["id"], inicio, fin, False)
-        # fuera de la ventana: en incremental puede ser un evento que se movió y hay que sacarlo
+        if fin > desde:  # los futuros entran aunque hoy estén fuera de la ventana de reserva:
+            return EventoCalendario(item["id"], inicio, fin, False)  # google no los reenvía luego
+        # ya terminó: en incremental puede ser un evento que se movió al pasado y hay que sacarlo
         # del espejo; en el listado completo el espejo ya se vació.
         return EventoCalendario(item["id"], inicio, fin, True) if incremental else None
 

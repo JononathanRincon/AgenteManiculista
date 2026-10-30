@@ -36,14 +36,19 @@ def url_publica_https(url: str | None) -> bool:
         host = (partes.hostname or "").lower()
     except ValueError:
         return False
-    if partes.scheme != "https" or not host or host == "localhost":
+    if partes.scheme != "https" or not host or host == "localhost" or partes.username:
+        return False
+    if not partes.path.rstrip("/").endswith(
+        "/webhook/calendar"
+    ):  # un error de ruta perdería avisos
         return False
     if host.endswith(_SUFIJOS_PRIVADOS):
         return False
     try:
         ip = ipaddress.ip_address(host)
     except ValueError:
-        return "." in host  # un nombre sin punto es interno
+        # un nombre sin punto es interno; solo dígitos y puntos (127.1) es una IP disfrazada
+        return "." in host and not host.replace(".", "").isdigit()
     return ip.is_global
 
 

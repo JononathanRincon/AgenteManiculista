@@ -726,7 +726,7 @@
   - Test: `pytest tests/integration/test_produccion.py -q`
   - Hecho cuando: con ajustes de producción simulados la pasarela, el worker y el canal existen, el webhook de Calendar invalida el caché y el cierre no deja tareas vivas.
 
-- [ ] **TASK-74** · Corregir los hallazgos medios y bajos de la auditoría del Bloque 9
+- [x] **TASK-74** · Corregir los hallazgos medios y bajos de la auditoría del Bloque 9
   - Objetivo: M1 espejo sin eventos futuros fuera de ventana, M3 simulador en producción, M4 límite de tasa tras autenticar, B1/B3/B4/I1.
   - Trazabilidad: NFR-CAL-01, EARS-CAC-02, EARS-CAC-06 · Plan: 11.6
   - Diseño: design.md §B9.4

@@ -90,3 +90,18 @@ def test_los_secretos_del_transporte_exigen_32_caracteres(
         Settings(_env_file=None)  # type: ignore[call-arg]
     monkeypatch.setenv(variable, "x" * 32)
     assert Settings(_env_file=None) is not None  # type: ignore[call-arg]
+
+
+def test_el_simulador_no_se_permite_en_produccion(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ENTORNO", "produccion")
+    monkeypatch.setenv("SIMULADOR", "true")
+    with pytest.raises(ValidationError, match="SIMULADOR"):
+        Settings(_env_file=None)  # type: ignore[call-arg]
+    monkeypatch.setenv("ENTORNO", "demo")
+    assert Settings(_env_file=None).simulador is True  # type: ignore[call-arg]
+
+
+def test_el_token_del_canal_exige_32_caracteres(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CALENDAR_CHANNEL_TOKEN", "x" * 31)
+    with pytest.raises(ValidationError, match="32 caracteres"):
+        Settings(_env_file=None)  # type: ignore[call-arg]

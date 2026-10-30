@@ -6,6 +6,7 @@ pueden sustituirse (pruebas); por defecto se crean los reales.
 
 from __future__ import annotations
 
+import logging
 import random
 import time
 from dataclasses import dataclass
@@ -21,11 +22,13 @@ from app.config import Config, ConfiguracionInvalida, Settings
 from app.control_humano import ControlHumano
 from app.humanizacion import SecuenciaEnvio, Sidecar
 from app.llm import crear_proveedor
-from app.puertos import Calendario, CanalesCalendario, Reloj
+from app.puertos import Calendario, CanalesCalendario, ErrorCalendario, Reloj
 from app.reloj import RelojSistema
 from app.webhook import Pasarela
 from app.whatsapp import ClienteSidecar, MensajeriaBaileys
 from app.worker import Worker
+
+log = logging.getLogger("produccion")
 
 OBLIGATORIAS = {
     "GOOGLE_SERVICE_ACCOUNT_JSON": "google_service_account_json",
@@ -47,8 +50,15 @@ class Produccion:
     calendario_id: str
 
     def alinear_calendario(self) -> None:
-        """Push recibido: invalida el caché y resincroniza el espejo (EARS-CAC-02)."""
-        self.cache.resincronizar(self.calendario_id)
+        """Push recibido: invalida el caché y resincroniza el espejo (EARS-CAC-02).
+
+        Corre tras responder 200 (Google no reintenta). Si falla, el espejo ya quedó marcado como
+        desactualizado y se refresca en la próxima consulta.
+        """
+        try:
+            self.cache.resincronizar(self.calendario_id)
+        except ErrorCalendario as exc:
+            log.warning("resincronizacion_fallida", extra={"error": type(exc).__name__})
 
 
 def exigir_ajustes(ajustes: Settings) -> None:
