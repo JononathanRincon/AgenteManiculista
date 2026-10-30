@@ -73,6 +73,8 @@ class Negocio(_Modelo):
     refresco_degradado_minutos: int = Field(gt=0)
     reserva_pendiente_expira_minutos: int = Field(gt=0)
     inactividad_reinicio_minutos: int = Field(gt=0)
+    llm_max_por_telefono_hora: int = Field(10, gt=0)
+    llm_max_global_dia: int = Field(500, gt=0)
     horario: dict[str, Horario | None]
     domicilio: Domicilio
     ubicacion: Ubicacion
@@ -206,4 +208,12 @@ class Settings(BaseSettings):
     def _gemini_requiere_clave(self) -> Self:
         if self.proveedor_llm == "gemini" and self.gemini_api_key is None:
             raise ValueError("GEMINI_API_KEY es obligatoria cuando PROVEEDOR_LLM=gemini")
+        return self
+
+    @model_validator(mode="after")
+    def _produccion_exige_tier_de_pago(self) -> Self:
+        # el tier gratuito puede usar el contenido para mejorar productos de Google (Ley 1581)
+        usa_gemini_en_produccion = self.entorno == "produccion" and self.proveedor_llm == "gemini"
+        if usa_gemini_en_produccion and self.gemini_tier != "paid":
+            raise ValueError("en producción GEMINI_TIER debe ser paid cuando se usa Gemini")
         return self

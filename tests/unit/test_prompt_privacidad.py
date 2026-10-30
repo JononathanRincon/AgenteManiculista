@@ -2,6 +2,7 @@
 
 import inspect
 from datetime import date
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
@@ -125,3 +126,26 @@ def test_en_una_conversacion_real_ningun_dato_personal_llega_al_prompt(
         ):
             assert dato not in prompt, dato
         assert "frase rara" in prompt or "otra frase" in prompt
+
+
+@pytest.mark.parametrize(
+    ("escrito", "no_debe_aparecer"),
+    [
+        ("vivo en la calle 5 # 3-2 apto 4 y quiero uñas", "calle 5"),
+        ("estoy en la Carrera 15 con 80, barrio Secreto", "Carrera 15"),
+        ("mi casa es Cra. 7 #45-10", "45-10"),
+        ("Avenida 68 sur 12-34", "68 sur"),
+    ],
+)
+def test_las_direcciones_escritas_por_la_clienta_se_redactan(
+    escrito: str, no_debe_aparecer: str
+) -> None:
+    assert no_debe_aparecer not in construir_prompt(escrito, CATALOGO, HOY, "MENU")
+
+
+def test_la_plantilla_ilegible_falla_con_un_mensaje_claro(tmp_path: Path) -> None:
+    from app.config import ConfiguracionInvalida
+    from app.intencion import cargar_plantilla
+
+    with pytest.raises(ConfiguracionInvalida, match="prompt_inexistente"):
+        cargar_plantilla(tmp_path / "prompt_inexistente.txt")

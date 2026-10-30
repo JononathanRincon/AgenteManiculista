@@ -22,7 +22,13 @@ from app.config import Config
 from app.disponibilidad import minutos_ocupados
 from app.formato import fecha, hora
 from app.mensajes import texto
-from app.modelos import Conversacion, MensajeProcesado, Reserva, unidad_de_trabajo
+from app.modelos import (
+    Conversacion,
+    LlamadaLLM,
+    MensajeProcesado,
+    Reserva,
+    unidad_de_trabajo,
+)
 from app.puertos import (
     Calendario,
     CuotaExcedida,
@@ -132,6 +138,7 @@ class Worker:
         with unidad_de_trabajo(self._engine) as s:
             expiradas = expirar_pendientes(s, self._config, ahora)
             anonimizar_antiguas(s, ahora)
+            s.execute(delete(LlamadaLLM).where(LlamadaLLM.en < ahora - timedelta(days=2)))
             s.execute(
                 delete(MensajeProcesado).where(
                     MensajeProcesado.recibido_en < ahora - RETENCION_MENSAJES

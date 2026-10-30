@@ -123,3 +123,47 @@ def test_la_fabrica_crea_el_proveedor_de_gemini(monkeypatch: pytest.MonkeyPatch)
     proveedor = crear_proveedor(Settings(_env_file=None))  # type: ignore[call-arg]
     assert isinstance(proveedor, ProveedorGemini)
     assert proveedor._modelo == "modelo-x"  # noqa: SLF001
+
+
+class RelojManual:
+    def __init__(self) -> None:
+        self.t = 0.0
+
+    def __call__(self) -> float:
+        return self.t
+
+
+def test_una_sola_llamada_sin_reintentos_del_sdk() -> None:
+    proveedor, modelos = _proveedor(json.dumps(BUENO))
+    proveedor.interpretar("hola", CATALOGO, HOY, "MENU")
+    opciones = modelos.llamadas[0]["config"].http_options
+    assert opciones.retry_options.attempts == 1
+
+
+def test_tras_tres_fallos_seguidos_el_circuito_se_abre_un_minuto() -> None:
+    modelos = ModelosFalsos(RuntimeError("cuota"))
+    reloj = RelojManual()
+    proveedor = ProveedorGemini(SimpleNamespace(models=modelos), "m", reloj=reloj)
+    for _ in range(3):
+        assert proveedor.interpretar("hola", CATALOGO, HOY, "MENU") is None
+    assert len(modelos.llamadas) == 3
+    assert proveedor.interpretar("hola", CATALOGO, HOY, "MENU") is None  # circuito abierto
+    assert len(modelos.llamadas) == 3  # no se volvió a llamar
+    reloj.t = 61.0
+    modelos.resultado = json.dumps(BUENO)
+    assert proveedor.interpretar("hola", CATALOGO, HOY, "MENU") is not None
+    assert len(modelos.llamadas) == 4
+
+
+def test_un_exito_reinicia_la_cuenta_de_fallos() -> None:
+    modelos = ModelosFalsos(RuntimeError("x"))
+    proveedor = ProveedorGemini(SimpleNamespace(models=modelos), "m", reloj=RelojManual())
+    proveedor.interpretar("hola", CATALOGO, HOY, "MENU")
+    proveedor.interpretar("hola", CATALOGO, HOY, "MENU")
+    modelos.resultado = json.dumps(BUENO)
+    assert proveedor.interpretar("hola", CATALOGO, HOY, "MENU") is not None
+    modelos.resultado = RuntimeError("x")
+    for _ in range(2):
+        proveedor.interpretar("hola", CATALOGO, HOY, "MENU")
+    modelos.resultado = json.dumps(BUENO)
+    assert proveedor.interpretar("hola", CATALOGO, HOY, "MENU") is not None  # no llegó a 3 seguidos

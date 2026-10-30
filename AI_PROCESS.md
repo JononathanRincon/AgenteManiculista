@@ -799,3 +799,24 @@
 - **Intentos del bucle interno:** 1/3 por tarea.
 - **Pendientes:** el servidor local de la demo se detuvo; el despliegue en Render (TASK-61) exige confirmación del usuario y elegir plan.
 - **Estado actualizado:** tasks.md TASK-30 a 34 y 57 `[x]`; Fase 8 `✅`; Fase 9 `⏳`.
+
+## Entrada 19 — 2026-10-30 — Bloque 7 completo: TASK-35 a 40 y 58 (Fase 9, capa de intención)
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code; revisión de seguridad con el agente `security-auditor`.
+- **Fase / tarea:** Fase 9 — Capa de intención · TASK-35 a TASK-40 y TASK-58
+- **Prompt utilizado (literal):** continuación de "hagas todos los bloques de una vez".
+- **Output del agente (resumen):**
+  - `app/intencion.py`: esquema `Intencion` (extra=forbid, inmutable, servicio del catálogo, fecha no pasada, confianza 0–1), `validar_intencion` (nunca lanza), `construir_prompt` con firma que solo admite texto, catálogo, fecha y estado, `redactar` (quita teléfonos, correos, direcciones y los signos `<>`), plantilla versionada `config/prompt_intencion.txt`.
+  - `app/llm/` (`ProveedorLLM`, `Ninguno`, `crear_proveedor`, `ProveedorGemini`).
+  - `Agente`: orden FAQ → palabras clave → LLM (umbral 0,7) → menú; el LLM puede saltar pasos hasta ELIGIENDO_HORA con servicio, fecha y franja, **nunca** a CONFIRMANDO; métricas `mensajes_total` y `mensajes_sin_llm`; `config/frases` de evals.
+  - 40 frases en `tests/evals/frases.yaml` (palabras clave, FAQ, ambiguas, LLM simulado correcto y erróneo, intentos de inyección).
+- **Documentación oficial consultada (source-driven):** página de modelos de Gemini (modelo Flash-Lite estable vigente: `gemini-3.5-flash-lite`; `gemini-2.5-flash-lite` solo para quienes ya lo usaban), página de salida estructurada (usa ahora la API Interactions) y SDK instalado `google-genai` 2.34: `types.GenerateContentConfig.response_mime_type`/`response_json_schema`/`http_options`, `HttpOptions.timeout` en milisegundos y `HttpRetryOptions`, `errors.APIError.code`. El valor por defecto de `GEMINI_MODEL` pasó de `gemini-2.5-flash-lite` a `gemini-3.5-flash-lite`. **La llamada real a Gemini no se probó** (no hay clave de API); los tests usan un cliente simulado.
+- **Hallazgos de la auditoría (TASK-58), sin críticos ni altos; corregidos:**
+  - MEDIO: sin tope de consultas al LLM → tope por clienta (10/hora) y global (500/día) en SQLite (`llamadas_llm`), configurable en `negocio.yaml`; al superarlo se usa el menú; limpieza a los 2 días.
+  - MEDIO: tier gratuito por defecto con texto libre → `Settings` exige `GEMINI_TIER=paid` en producción con Gemini; `redactar` ahora también quita direcciones.
+  - BAJO: sin reintentos del SDK → `HttpRetryOptions(attempts=1)`; sin circuit breaker → 3 fallos seguidos pausan el proveedor 60 s.
+  - **Aceptados:** una inyección directa solo puede forzar un camino ya permitido (la clienta debe tocar una hora ofrecida); huecos de ofuscación de teléfonos escritos en letras (impacto: lo escribe la propia clienta; se cubre con el tier de pago y el aviso de datos).
+- **Dependencias agregadas:** ninguna (`google-genai` ya estaba fijada).
+- **Reporte de pruebas:** 524 pasaron, 0 fallaron. Cobertura de ramas medida: agente 100 %, intencion 100 %, llm (base, ninguno, gemini, fábrica) 100 %; total del proyecto 99 %.
+- **Intentos del bucle interno:** 1/3 por tarea.
+- **Estado actualizado:** tasks.md TASK-35 a 40 y 58 `[x]`; Fase 9 `✅`; Fase 10 `⏳`.

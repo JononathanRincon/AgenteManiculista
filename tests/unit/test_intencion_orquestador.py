@@ -181,3 +181,41 @@ def test_porcentaje_de_mensajes_sin_llm(engine: Engine, cfg: Config) -> None:
 def test_porcentaje_sin_mensajes_es_cero(engine: Engine) -> None:
     with unidad_de_trabajo(engine, escritura=False) as s:
         assert porcentaje_sin_llm(s) == 0.0
+
+
+def test_tope_de_consultas_al_llm_por_clienta_y_por_dia(engine: Engine, cfg: Config) -> None:
+    topes = {"llm_max_por_telefono_hora": 2, "llm_max_global_dia": 3}
+    negocio = cfg.negocio.model_copy(update=topes)
+    config = cfg.model_copy(update={"negocio": negocio})
+    ana, proveedor = _chat(engine, config, None)
+    for i in range(5):
+        ana.escribe(f"frase rara {i}")
+    assert len(proveedor.llamadas) == 2  # el tope por clienta corta las demás: van al menú
+    assert "No te entendí" in ana.escribe("otra frase rara")[0].cuerpo
+    ana.avanza(hours=1, minutes=1)  # pasa la hora: vuelve a tener cupo
+    ana.escribe("frase rara tras la hora")
+    assert len(proveedor.llamadas) == 3
+    luisa = Chat(engine, config, telefono="573009998877", proveedor=proveedor, reloj=ana.reloj)
+    luisa.acepta_aviso()
+    luisa.escribe("frase rara de luisa")
+    assert len(proveedor.llamadas) == 3  # el tope global diario (3) ya se alcanzó
+    ana.avanza(days=1, minutes=1)
+    ana.escribe("frase rara al día siguiente")
+    assert len(proveedor.llamadas) == 4
+
+
+def test_la_limpieza_borra_las_consultas_viejas(engine: Engine, cfg: Config) -> None:
+    from app.mensajes import configurar
+    from app.modelos import LlamadaLLM
+    from app.worker import Worker
+
+    from tests.integration.conftest import MensajeriaRegistro
+
+    chat, _ = _chat(engine, cfg, None)
+    chat.escribe(RARA)
+    worker = Worker(engine, chat.calendario, MensajeriaRegistro(), cfg, chat.reloj)
+    configurar(None)
+    chat.avanza(days=3)
+    worker.limpiar()
+    with unidad_de_trabajo(engine, escritura=False) as s:
+        assert s.scalars(select(LlamadaLLM)).all() == []

@@ -154,6 +154,16 @@ class EventoEspejo(Base):
     estado: Mapped[str] = mapped_column(String)
 
 
+class LlamadaLLM(Base):
+    """Cada consulta al LLM; sirve para acotar el costo por clienta y por día."""
+
+    __tablename__ = "llamadas_llm"
+    __table_args__ = (Index("ix_llamadas_tel_en", "telefono", "en"),)
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    telefono: Mapped[str] = mapped_column(String)
+    en: Mapped[datetime] = mapped_column(FechaUTC)
+
+
 class Metrica(Base):
     __tablename__ = "metricas"
     nombre: Mapped[str] = mapped_column(String, primary_key=True)
