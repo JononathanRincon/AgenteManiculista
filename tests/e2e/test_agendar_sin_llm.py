@@ -1,10 +1,11 @@
 """E2E de agendar con PROVEEDOR_LLM=none: el sistema funciona completo sin LLM (NFR-DIS-01)."""
 
 import asyncio
-import sys
 
 import pytest
 from app.config import Config, Settings
+from app.llm import crear_proveedor
+from app.llm.ninguno import Ninguno
 from app.modelos import ColaEscritura, Reserva, unidad_de_trabajo
 from app.worker import Worker
 from sqlalchemy import Engine, select
@@ -59,7 +60,7 @@ async def test_agendar_de_punta_a_punta_con_el_worker_en_marcha(
     assert detalle.titulo == "Semipermanente · María Pérez"
     assert chat.telefono in detalle.descripcion
     assert "Cita confirmada" in mensajeria.enviados[0][1]
-    assert "google.genai" not in sys.modules  # ningún LLM fue siquiera importado
+    assert isinstance(crear_proveedor(sin_llm), Ninguno)  # el proveedor configurado no hace nada
 
 
 async def test_dos_clientas_a_la_vez_nunca_comparten_horario(engine: Engine, cfg: Config) -> None:

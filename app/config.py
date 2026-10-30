@@ -191,7 +191,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./agenda.db"
     proveedor_llm: Literal["gemini", "none"] = "none"
     gemini_api_key: SecretStr | None = None
-    gemini_model: str = "gemini-2.5-flash-lite"
+    gemini_model: str = "gemini-3.5-flash-lite"
     gemini_tier: Literal["free", "paid"] = "free"
     whatsapp_token: SecretStr | None = None
     whatsapp_phone_number_id: str | None = None

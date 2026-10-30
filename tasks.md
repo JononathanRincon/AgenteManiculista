@@ -468,7 +468,7 @@
   - Test: `pytest tests/unit/test_llm_ninguno.py -q`
   - Hecho cuando: `PROVEEDOR_LLM=none` devuelve el proveedor nulo y el sistema sigue funcionando.
 
-- [ ] **TASK-37** · Implementar el adaptador de Gemini con timeout de 3 s y sin streaming
+- [x] **TASK-37** · Implementar el adaptador de Gemini con timeout de 3 s y sin streaming
   - Objetivo: llamada a Flash-Lite con salida estructurada validada localmente.
   - Trazabilidad: US-11, EARS-INT-02, EARS-INT-04, NFR-REN-03 · Plan: 9.3
   - Diseño: design.md §B7.4 (⚠️ verificar documentación de `google-genai`)
