@@ -9,10 +9,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
 from app.limite_tasa import LimiteTasa
-from app.simulador.demo import Demo, TelefonoInvalido
+from app.simulador.demo import CarreraSinGanadora, Demo, HorarioNoDisponible, TelefonoInvalido
 
 ESTATICOS = Path(__file__).resolve().parent / "static"
 LATIDO_S = 15.0
@@ -28,6 +28,7 @@ class MensajeIn(BaseModel):
 class CarreraIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     servicio_id: str = Field(default="retiro", max_length=64)
+    inicio: AwareDatetime | None = None
 
 
 def _demo(request: Request) -> Demo:
@@ -68,6 +69,37 @@ async def flujo_eventos(demo: Demo, latido_s: float = LATIDO_S) -> AsyncGenerato
         demo.desuscribir(avisar)
 
 
+async def _procesar_mensaje(demo: Demo, datos: MensajeIn) -> dict[str, object]:
+    try:
+        salidas = await asyncio.to_thread(
+            demo.mensaje, datos.telefono_demo, datos.texto, datos.boton_id
+        )
+    except TelefonoInvalido as exc:
+        raise HTTPException(status_code=422, detail="teléfono inválido") from exc
+    respuestas = [
+        {
+            "tipo": s.tipo,
+            "cuerpo": s.cuerpo,
+            "boton": s.boton,
+            "opciones": [o.__dict__ for o in s.opciones],
+        }
+        for s in salidas
+    ]
+    return {"respuestas": respuestas}
+
+
+async def _ejecutar_carrera(demo: Demo, datos: CarreraIn) -> dict[str, dict[str, str]]:
+    try:
+        return await asyncio.to_thread(demo.carrera, datos.servicio_id, datos.inicio)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail="servicio desconocido") from exc
+    except HorarioNoDisponible as exc:
+        detalle = {"codigo": "HORARIO_NO_DISPONIBLE", "mensaje": "Ese horario no está libre"}
+        raise HTTPException(status_code=409, detail=detalle) from exc
+    except CarreraSinGanadora as exc:
+        raise HTTPException(status_code=500, detail="la carrera no tuvo una ganadora") from exc
+
+
 def crear_router() -> APIRouter:
     router = APIRouter(prefix="/demo", dependencies=[Depends(_limite)])
 
@@ -77,22 +109,7 @@ def crear_router() -> APIRouter:
 
     @router.post("/api/mensaje")
     async def mensaje(datos: MensajeIn, demo: Annotated[Demo, Depends(_demo)]) -> dict[str, object]:
-        try:
-            salidas = await asyncio.to_thread(
-                demo.mensaje, datos.telefono_demo, datos.texto, datos.boton_id
-            )
-        except TelefonoInvalido as exc:  # pragma: no cover - ya validado por el esquema
-            raise HTTPException(status_code=422, detail="teléfono inválido") from exc
-        respuestas = [
-            {
-                "tipo": s.tipo,
-                "cuerpo": s.cuerpo,
-                "boton": s.boton,
-                "opciones": [o.__dict__ for o in s.opciones],
-            }
-            for s in salidas
-        ]
-        return {"respuestas": respuestas}
+        return await _procesar_mensaje(demo, datos)
 
     @router.get("/api/chat/{telefono}")
     async def chat(telefono: str, demo: Annotated[Demo, Depends(_demo)]) -> dict[str, object]:
@@ -111,6 +128,12 @@ def crear_router() -> APIRouter:
             media_type="text/event-stream",
             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
         )
+
+    @router.post("/api/carrera")
+    async def carrera(
+        datos: CarreraIn, demo: Annotated[Demo, Depends(_demo)]
+    ) -> dict[str, dict[str, str]]:
+        return await _ejecutar_carrera(demo, datos)
 
     @router.post("/api/reiniciar", status_code=204)
     async def reiniciar(demo: Annotated[Demo, Depends(_demo)]) -> Response:
