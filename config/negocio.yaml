@@ -1,0 +1,29 @@
+# Configuración del negocio. Edita con cuidado y reinicia la aplicación para aplicar los cambios.
+calendario_id: "primary"            # correo o id del calendario compartido con la service account
+zona_horaria: "America/Bogota"
+bloque_minutos: 30
+margen_minutos: 15                  # descanso entre citas
+anticipacion_minima_horas: 2
+ventana_maxima_dias: 21
+max_citas_futuras_por_clienta: 2
+cancelacion_minima_horas: 0
+cache_ttl_segundos: 60
+refresco_degradado_minutos: 5
+reserva_pendiente_expira_minutos: 10
+inactividad_reinicio_minutos: 30
+horario:                            # null = no se atiende ese día
+  lunes: {abre: "08:00", cierra: "18:00"}
+  martes: {abre: "08:00", cierra: "18:00"}
+  miercoles: {abre: "08:00", cierra: "18:00"}
+  jueves: {abre: "08:00", cierra: "18:00"}
+  viernes: {abre: "08:00", cierra: "18:00"}
+  sabado: {abre: "09:00", cierra: "14:00"}
+  domingo: null
+domicilio:
+  habilitado: false                 # true = atiende también a domicilio
+  minutos_desplazamiento: 30
+  recargo_cop: 0                    # obligatorio si habilitado; lo define la manicurista (valor de ejemplo)
+  zona_cobertura: []                # vacío = sin restricción
+ubicacion:
+  texto: "Calle 00 # 00-00, Barrio Ejemplo"
+  mapa_url: "https://maps.example.com"
