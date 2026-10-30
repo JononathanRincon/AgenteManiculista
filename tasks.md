@@ -521,7 +521,7 @@
 ## Bloque 8 — Integración WhatsApp y observabilidad (Fase 10)
 *Skills:* `source-driven-development`, `security-and-hardening`, `observability-and-instrumentation`
 
-- [ ] **TASK-41** · Implementar la verificación GET y la firma HMAC del POST
+- [-] ⚠️ NO REALIZADA: reemplazada por TASK-68 (verificación HMAC del webhook del sidecar; ADR-009) · **TASK-41** · Implementar la verificación GET y la firma HMAC del POST
   - Objetivo: `hub.challenge` y 403 si la firma no coincide.
   - Trazabilidad: US-13, EARS-WA-01, EARS-WA-02 · Plan: 10.1
   - Diseño: design.md §B8.3, §B8.4 (⚠️ documentación de Meta)
@@ -531,7 +531,7 @@
   - Test: `pytest tests/integration/test_webhook.py -q -k "verificacion or firma"`
   - Hecho cuando: firma inválida o ausente da 403 y el GET responde el challenge solo con token correcto.
 
-- [ ] **TASK-42** · Procesar el POST con 200 inmediato, background y deduplicación
+- [-] ⚠️ NO REALIZADA: reemplazada por TASK-68 y TASK-66 (POST firmado, dedup y debounce; ADR-009) · **TASK-42** · Procesar el POST con 200 inmediato, background y deduplicación
   - Objetivo: responder rápido y procesar sin propagar errores a Meta.
   - Trazabilidad: US-03, US-07, EARS-WA-03, EARS-WA-04, NFR-REN-01 · Plan: 10.2
   - Diseño: design.md §B8.4
@@ -541,7 +541,7 @@
   - Test: `pytest tests/integration/test_webhook.py -q -k "post or dedup"`
   - Hecho cuando: con procesamiento lento el 200 llega en < 1 s y el mismo `id` produce un solo efecto.
 
-- [ ] **TASK-43** · Implementar el cliente de Graph API con reintentos
+- [-] ⚠️ NO REALIZADA: reemplazada por TASK-64, TASK-65 y TASK-69 (adaptador Baileys; ADR-009) · **TASK-43** · Implementar el cliente de Graph API con reintentos
   - Objetivo: enviar texto, botones y listas; backoff en 429/5xx.
   - Trazabilidad: US-03, EARS-WA-05, EARS-CON-05 · Plan: 10.3
   - Diseño: design.md §B8.2, §B8.4 (⚠️ límites y payloads verificados en documentación)
@@ -561,7 +561,7 @@
   - Test: `pytest tests/unit/test_logging.py tests/integration/test_health.py -q`
   - Hecho cuando: ningún log contiene teléfonos completos ni tokens y `/health` expone las cuatro métricas.
 
-- [ ] **TASK-59** · Revisión del Bloque 8
+- [-] ⚠️ NO REALIZADA: reemplazada por TASK-72 (la revisión del Bloque 8 cubre el transporte Baileys; ADR-009) · **TASK-59** · Revisión del Bloque 8
   - Objetivo: cerrar el bloque con revisión de seguridad del webhook.
   - Trazabilidad: NFR-CAL-01, NFR-SEG-01 · Plan: 10.5
   - Diseño: design.md §B8.5
@@ -570,6 +570,108 @@
   - Entregable: informe en `AI_PROCESS.md`
   - Test: `make test`
   - Hecho cuando: verde, cobertura 100 % de ramas en la verificación de firma y sin hallazgos altos.
+
+### Tareas agregadas por la v0.4 (ADR-009: transporte Baileys con controles anti-ban)
+
+- [ ] **TASK-63** · Agregar la configuración anti-ban y las tablas del transporte
+  - Objetivo: `AntiBan` y `pausa_intervencion_humana_minutos` en `negocio.yaml`; columna `pausa_humana_hasta`; tablas `opciones_ofrecidas` y `envios_recientes`.
+  - Trazabilidad: US-14, EARS-WA-17, EARS-WA-18, NFR-ANT-01 · Plan: 10.6
+  - Diseño: design.md §B8.1
+  - Skill: `/agent-skills:test`
+  - Archivos: `app/config.py`, `app/modelos.py`, `config/negocio.yaml`, `tests/unit/test_config.py`, `tests/integration/test_modelos.py`
+  - Entregable: modelo `AntiBan` validado (rangos coherentes) y tablas nuevas
+  - Test: `pytest tests/unit/test_config.py tests/integration/test_modelos.py -q`
+  - Hecho cuando: valores fuera de rango impiden el arranque y las tablas se crean con sus claves.
+
+- [ ] **TASK-64** · Implementar la humanización de envíos (leído, escribiendo, pausa, envío único)
+  - Objetivo: tiempos de lectura y escritura con jitter y la secuencia leer → composing → espera → paused → enviar con `Dormir` inyectable.
+  - Trazabilidad: US-14, EARS-WA-06, 07, 08, 09, NFR-ANT-01 · Plan: 10.6
+  - Diseño: design.md §B8.2, §B8.4
+  - Skill: `/agent-skills:test`, `security-and-hardening`
+  - Archivos: `app/humanizacion.py`, `tests/unit/test_humanizacion.py`
+  - Entregable: `tiempo_lectura`, `tiempo_escritura`, `SecuenciaEnvio` con cliente del sidecar abstracto
+  - Test: `pytest tests/unit/test_humanizacion.py -q`
+  - Hecho cuando: ningún envío sale en menos de 2,5 s (reloj de producción) y con `Dormir` nulo el retardo es 0.
+
+- [ ] **TASK-65** · Degradar botones y listas a menús numerados y mapear la respuesta
+  - Objetivo: un solo texto numerado y la vuelta de "2" o del nombre al `id_interactivo` ofrecido.
+  - Trazabilidad: US-03, EARS-WA-10, EARS-CON-05 · Plan: 10.6
+  - Diseño: design.md §B8.2, §B8.4
+  - Skill: `/agent-skills:test`
+  - Archivos: `app/menus_numericos.py`, `tests/unit/test_menus_numericos.py`
+  - Entregable: `degradar`, `mapear_respuesta`, persistencia del último menú por teléfono
+  - Test: `pytest tests/unit/test_menus_numericos.py -q`
+  - Hecho cuando: un número fuera de rango no cambia el estado y `CONFIRMANDO` sigue inalcanzable sin una hora ofrecida.
+
+- [ ] **TASK-66** · Implementar el acumulador (debounce por teléfono)
+  - Objetivo: concatenar mensajes seguidos y responder una sola vez.
+  - Trazabilidad: US-14, EARS-WA-16, EC-21 · Plan: 10.6
+  - Diseño: design.md §B8.2, §B8.4
+  - Skill: `/agent-skills:test`
+  - Archivos: `app/acumulador.py`, `tests/unit/test_acumulador.py`
+  - Entregable: `Acumulador` asíncrono con ventana configurable (0 en pruebas)
+  - Test: `pytest tests/unit/test_acumulador.py -q`
+  - Hecho cuando: tres mensajes en la ventana producen una sola invocación con los textos unidos por salto de línea.
+
+- [ ] **TASK-67** · Implementar la pausa por intervención humana y el rate limit
+  - Objetivo: pausar el bot 2 h ante un `fromMe` ajeno y limitar las respuestas por teléfono y globales.
+  - Trazabilidad: US-14, EARS-WA-15, 17, 18, EC-22 · Plan: 10.6
+  - Diseño: design.md §B8.2, §B8.4
+  - Skill: `/agent-skills:test`, `security-and-hardening`
+  - Archivos: `app/control_humano.py`, `tests/unit/test_control_humano.py`
+  - Entregable: `ControlHumano` (pausa persistida, ventana deslizante, nunca en frío)
+  - Test: `pytest tests/unit/test_control_humano.py -q`
+  - Hecho cuando: la pausa expira a los 120 min, el límite 15 por 10 min se respeta y no se escribe a quien no escribió primero.
+
+- [ ] **TASK-68** · Implementar el webhook del sidecar (firma HMAC, filtros, dedup, mapeo a Entrante)
+  - Objetivo: `POST /webhook/whatsapp` con 200 inmediato y procesamiento en background.
+  - Trazabilidad: US-03, US-13, US-14, EARS-WA-01..04, EARS-WA-15, EC-23 · Plan: 10.6
+  - Diseño: design.md §B8.3, §B8.4
+  - Skill: `security-and-hardening`, `/agent-skills:test`
+  - Archivos: `app/webhook.py`, `tests/integration/test_webhook_whatsapp.py`
+  - Entregable: verificación sobre cuerpo crudo con `hmac.compare_digest`, filtro de JID, deduplicación, integración con acumulador, agente y envío humanizado
+  - Test: `pytest tests/integration/test_webhook_whatsapp.py -q`
+  - Hecho cuando: firma inválida o ausente da 403, grupos/difusión/canales se ignoran y con procesamiento lento el 200 llega en < 1 s.
+
+- [ ] **TASK-69** · Implementar el adaptador `MensajeriaBaileys` hacia el sidecar
+  - Objetivo: puerto `Mensajeria` sobre HTTP interno con token, reintentos con backoff y registro de ids emitidos.
+  - Trazabilidad: US-03, EARS-WA-05, EARS-WA-09 · Plan: 10.6
+  - Diseño: design.md §B8.2
+  - Skill: `/agent-skills:test`
+  - Archivos: `app/whatsapp.py`, `tests/integration/test_mensajeria_baileys.py`
+  - Entregable: adaptador con httpx simulado
+  - Test: `pytest tests/integration/test_mensajeria_baileys.py -q`
+  - Hecho cuando: reintenta ante 5xx sin duplicar envíos y los ids emitidos permiten distinguir lo propio de lo humano.
+
+- [ ] **TASK-70** · Construir el sidecar Node.js con Baileys
+  - Objetivo: sesión persistente, reconexión con backoff, QR protegido y primitivas leer/presencia/enviar.
+  - Trazabilidad: US-14, EARS-WA-11, 12, 13, 14, 17, EC-25 · Plan: 10.7
+  - Diseño: design.md §B8.2, §B8.4 (⚠️ verificar la documentación de Baileys y la versión en npm)
+  - Skill: `source-driven-development`, `/agent-skills:test`, `security-and-hardening`
+  - Archivos: `sidecar/`
+  - Entregable: servicio con `useMultiFileAuthState`, `fetchLatestBaileysVersion`, `Browsers.macOS('Desktop')`, `syncFullHistory: false`; lógica pura probada con `node --test`
+  - Test: `cd sidecar && node --test`
+  - Hecho cuando: el backoff es 2·4·8·16·60 s con jitter, `loggedOut` no reconecta y alerta, y el sidecar solo informa `fromMe` no emitidos por él.
+
+- [ ] **TASK-71** · Dockerizar el sidecar y agregarlo a compose y CI
+  - Objetivo: segundo contenedor no root con volumen `/data/baileys_auth` y verificación en CI.
+  - Trazabilidad: NFR-DES-01, NFR-SEG-02 · Plan: 10.7
+  - Diseño: design.md §5
+  - Skill: `ci-cd-and-automation`
+  - Archivos: `sidecar/Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml`, `.env.example`, `.gitignore`
+  - Entregable: servicio `sidecar`, pruebas de Node en CI, variables nuevas en `.env.example`
+  - Test: `docker compose build`
+  - Hecho cuando: ambas imágenes construyen, corren como no root y el volumen de sesión no se versiona.
+
+- [ ] **TASK-72** · Revisión del Bloque 8 (transporte Baileys) y `/health`
+  - Objetivo: cerrar el bloque con revisión de seguridad y el estado de WhatsApp en `/health`.
+  - Trazabilidad: NFR-CAL-01, NFR-SEG-01, NFR-ANT-01 · Plan: 10.8
+  - Diseño: design.md §B8.5
+  - Skill: `/agent-skills:review`, agente `security-auditor`
+  - Archivos: `app/webhook.py`, `app/whatsapp.py`, `app/humanizacion.py`, `app/control_humano.py`, `sidecar/`
+  - Entregable: informe en `AI_PROCESS.md`
+  - Test: `make test`
+  - Hecho cuando: verde, 100 % de ramas en la verificación de firma y sin hallazgos altos.
 
 ## Bloque 9 — Calendar real y push (Fase 11)
 *Skills:* `source-driven-development`, `security-and-hardening`, `test-driven-development`

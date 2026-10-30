@@ -141,6 +141,8 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
   - [ ] **Integración:** `test_webhook.py`, `test_whatsapp_cliente.py`, `test_health.py`
   - [ ] **Unitarias:** `test_logging.py`
   - Tareas: TASK-41 … TASK-44, TASK-59
+  - v0.4 (ADR-009): TASK-41, 42, 43 y 59 reemplazadas por TASK-63 … TASK-72 (transporte Baileys con controles anti-ban)
+  - [ ] **Unitarias (v0.4):** `test_humanizacion.py`, `test_menus_numericos.py`, `test_acumulador.py`, `test_control_humano.py`; **Integración:** `test_webhook_whatsapp.py`, `test_mensajeria_baileys.py`; **Sidecar:** `node --test`
   - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida; firma 100 %)
   - Cierre: <fecha> · AI_PROCESS #<N>
 

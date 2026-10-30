@@ -1,8 +1,8 @@
 # SDD.md — Documento de Diseño de Software (Maestro)
 ## Agente de Agendamiento por WhatsApp para Manicurista Independiente
-**Web/API (WhatsApp Cloud API) · LLM interpreta, código ejecuta · Mono-tenant (un negocio, calendario parametrizable)**
+**Web/API (WhatsApp vía Baileys, sidecar) · LLM interpreta, código ejecuta · Mono-tenant (un negocio, calendario parametrizable)**
 
-Versión 0.3 · Estado: **Aprobado** (validación humana registrada en la §20.2, 2026-10-30)
+Versión 0.4 · Estado: **Aprobado (v0.3) + cambio de transporte autorizado por el usuario (v0.4, §20.2)**
 
 > **Este documento se crea PRIMERO y completo.** Es la fuente única de verdad del proyecto.
 > Ningún otro documento del harness (`requirements.md`, `TDD.md`, `design.md`, `PLAN_IMPLEMENTACION.md`,
@@ -85,14 +85,16 @@ disponibilidad, reservas) no conoce FastAPI ni los SDK. Criterio según `DevSenP
 ### 3.2 Componentes principales
 | Componente | Responsabilidad | Tecnología |
 |---|---|---|
-| `webhook.py` | GET verificación; POST con firma HMAC; dedup; respuesta 200 inmediata; background task | FastAPI |
+| `webhook.py` | `POST /webhook/whatsapp` desde el sidecar: firma HMAC, filtro de chats, dedup, 200 inmediato, background task | FastAPI |
+| `acumulador.py` | Debounce por teléfono: concatena mensajes seguidos y responde una vez | asyncio |
 | `conversacion.py` | Máquina de estados por teléfono; **única** que decide transiciones | Python |
 | `intencion.py` + `llm/` | Palabras clave → LLM → validación Pydantic → fallback | google-genai, Pydantic |
 | `disponibilidad.py` | Cálculo de horarios ofrecibles desde bloques ocupados, margen y reservas locales | Python |
 | `cache.py` | Caché por día con TTL, hit/miss, invalidación | SQLAlchemy |
 | `cola.py` / `worker.py` | Cola en SQLite; un worker por calendario; backoff; pausa por cuota | asyncio, SQLAlchemy |
 | `calendario.py` | Cliente Calendar v3 (freebusy/events, watch, sync token) con service account | google-api-python-client |
-| `whatsapp.py` | Cliente Graph API (texto, botones, listas) con reintentos | httpx |
+| `whatsapp.py` | `MensajeriaBaileys`: humanización (leído, escribiendo, pausa), menús numerados, rate limit, handoff humano; habla con el sidecar | httpx |
+| `sidecar/` | Servicio Node.js con `@whiskeysockets/baileys`: sesión, reconexión, QR, leer/presencia/enviar, eventos | Node.js 22, TypeScript/JS |
 | `modelos.py`, `config.py` | ORM y configuración validada (YAML + entorno) | SQLAlchemy 2, Pydantic Settings |
 | `simulador/` | Transporte web `/demo` y calendario simulado | FastAPI + HTML/JS estático |
 
@@ -147,6 +149,56 @@ flowchart TD
 - Despliegue y push a `main` solo con confirmación explícita del usuario. Rollback: imagen anterior +
   backup del archivo SQLite.
 - Push de Calendar requiere HTTPS público; si no está, **modo degradado** (refresco cada 5 min, §4.3).
+
+---
+
+### 3.6 Transporte de WhatsApp con Baileys (anti-bloqueo) — ADR-009
+Cambio de requisito (v0.4): la dueña **no migra su número a la Cloud API** porque debe seguir usando la
+aplicación de WhatsApp Business en su celular. El transporte pasa a un **sidecar Node.js** con
+`@whiskeysockets/baileys` (WhatsApp Web multi-dispositivo, dispositivo vinculado por QR). **No cambia
+nada del dominio:** `disponibilidad`, `cache`, `reservas`, `cola`, `worker`, `conversacion` y `agente`
+siguen intactos; solo cambian los adaptadores de transporte detrás del puerto `Mensajeria`.
+
+```mermaid
+flowchart LR
+    C[Clienta] <--> WA[WhatsApp]
+    D[Celular de la dueña<br/>WhatsApp Business] <--> WA
+    WA <--> S[Sidecar Node.js<br/>Baileys]
+    S -- "POST firmado HMAC<br/>mensajes, estado, fromMe" --> W[/webhook/whatsapp<br/>FastAPI/]
+    W --> A[Acumulador<br/>debounce 4,5 s]
+    A --> AG[Agente / conversacion.procesar]
+    AG --> M[MensajeriaBaileys<br/>humanización + rate limit]
+    M -- "HTTP interno + token<br/>leer · presencia · enviar" --> S
+```
+
+**Reparto de responsabilidades.** El sidecar es delgado: conexión, persistencia de credenciales,
+reconexión, QR, y las tres primitivas (marcar leído, presencia, enviar). **Toda la política anti-bloqueo
+vive en Python**, donde se prueba con reloj inyectable (`Reloj`/`Dormir`) sin dormir de verdad.
+
+**Controles anti-bloqueo obligatorios**
+1. *Comportamiento humano.* Al recibir: pausa aleatoria de 1,5 a 3 s y luego marcar leído; presencia
+   `composing`; espera proporcional al texto (~45 ms por carácter, mínimo 2,5 s, máximo 6 s, jitter
+   uniforme de −400 a +600 ms); presencia `paused` y envío único. En `SIMULADOR` o pruebas el retardo es 0.
+2. *Botones y listas.* Baileys no garantiza el renderizado de mensajes interactivos nativos: todo
+   `Saliente` de tipo `botones` o `lista` se degrada a **un solo texto numerado** ("1️⃣ … 2️⃣ …\n\nResponde con
+   el número o el nombre de la opción"). La respuesta numérica o por nombre se mapea al `id_interactivo`
+   ofrecido en ese mensaje; si no coincide con una opción ofrecida, se ignora. `CONFIRMANDO` sigue siendo
+   alcanzable solo seleccionando una hora ofrecida (`contexto.horas_ofrecidas`).
+3. *Sesión y red.* Credenciales persistentes en `/data/baileys_auth`; reconexión con backoff exponencial
+   (2, 4, 8, 16, máx. 60 s + jitter) salvo `loggedOut` (401), que genera alerta `CRITICAL` y se expone en
+   `/health`; versión desde `fetchLatestBaileysVersion()`, `browser: Browsers.macOS('Desktop')`,
+   `syncFullHistory: false`; QR en consola o en un endpoint administrativo con token.
+4. *Reglas de oro.* Tráfico 100 % entrante (nunca se escribe en frío); se ignoran grupos (`@g.us`),
+   difusión (`status@broadcast`) y canales (`@newsletter`); *debounce* por teléfono (4,5 s) que concatena
+   los mensajes seguidos y responde una sola vez; **intervención humana**: un mensaje `fromMe` cuyo id no
+   emitió nuestro adaptador pausa el bot para ese teléfono (`pausa_intervencion_humana_minutos`, 120 por
+   defecto); tope de respuestas por teléfono (15 por 10 min) y global.
+
+**Riesgo aceptado y límites.** Baileys es una librería **no oficial** (no afiliada a WhatsApp) y su uso
+automatizado puede contravenir los Términos de Servicio de WhatsApp: ningún control elimina el riesgo de
+bloqueo del número. Los controles lo reducen; se documenta en el README y se deja la Cloud API como plan B
+(el puerto `Mensajeria` permite volver sin tocar el dominio). La ventana de 24 h del worker se conserva
+como regla propia: no se envían avisos si la clienta no escribió en las últimas 24 h.
 
 ---
 
@@ -216,12 +268,13 @@ o es negativo, el sistema no arranca). El recargo se informa a la clienta antes 
 |---|---|---|---|
 | Lenguaje | Python | 3.12 | Obligatorio por el cliente |
 | API | FastAPI + Uvicorn | ⚠️ fijar al construir | Obligatorio; background tasks y lifespan |
-| WhatsApp | Cloud API (Graph API) | v21.0 o superior | Obligatorio |
+| WhatsApp | `@whiskeysockets/baileys` en un sidecar Node.js (reemplaza a la Cloud API, ADR-009) | ⚠️ fijar versión ≥ 6.7.22 o 7.0.0-rc12 (aviso de seguridad GHSA-qvv5-jq5g-4cgg) | La dueña conserva la app de WhatsApp Business en su celular |
+| Runtime del sidecar | Node.js | 22 LTS | Requerido por Baileys |
 | Calendario | Google Calendar API v3 + service account | — | Sin OAuth de usuario: no hay refresh tokens que manejar |
 | LLM | `google-genai` tras `ProveedorLLM` | ⚠️ fijar al construir | Proveedor configurable por entorno |
 | Persistencia | SQLite vía SQLAlchemy 2.x (modo WAL) | ⚠️ fijar | Una sola instancia; sin Redis/Celery |
 | Validación | Pydantic v2 | ⚠️ fijar | Esquema estricto de intención y configuración |
-| HTTP cliente | httpx | ⚠️ fijar | Timeouts y reintentos hacia Graph |
+| HTTP cliente | httpx | ⚠️ fijar | Timeouts y reintentos hacia el sidecar |
 | Config | PyYAML, python-dotenv | ⚠️ fijar | YAML editable por la dueña |
 | Calidad | pytest, pytest-asyncio, coverage, ruff, mypy | ⚠️ fijar | Gate de calidad |
 | Contenedor | Docker multi-stage | — | Obligatorio |
@@ -297,8 +350,8 @@ PA-07). No aplica facturación DIAN (no se cobra ni se emiten documentos desde e
 ## 7. Diseño de API (preliminar)
 | # | Método | Ruta | Request | Respuesta | Auth | Requisitos |
 |---|---|---|---|---|---|---|
-| 1 | GET | `/webhook` | `hub.mode`, `hub.verify_token`, `hub.challenge` | `hub.challenge` (200) o 403 | Verify token | EARS-WA-01 |
-| 2 | POST | `/webhook` | Payload de Meta | 200 siempre ≤ 5 s | `X-Hub-Signature-256` (403 si falla) | EARS-WA-02, -03, -04 |
+| 1 | GET | `/admin/whatsapp/qr` | cabecera `X-Admin-Token` | QR de vinculación (texto/PNG) o estado | Token administrativo | EARS-WA-14 |
+| 2 | POST | `/webhook/whatsapp` | Evento del sidecar: mensaje, estado de conexión, `fromMe` | 200 siempre ≤ 5 s | `X-Firma` HMAC-SHA256 del cuerpo crudo (403 si falla) | EARS-WA-01..04 |
 | 3 | POST | `/webhook/calendar` | Headers `X-Goog-*` | 200 | Token de canal propio | EARS-CAC-02 |
 | 4 | GET | `/health` | — | JSON de métricas | Pública, sin datos personales | EARS-OBS-01 |
 | 5 | GET | `/demo` | — | HTML del simulador | Solo con `SIMULADOR=true` | EARS-SIM-01 |
@@ -330,6 +383,8 @@ stateDiagram-v2
     CONFIRMANDO --> FINALIZADO: Confirmar
     CONFIRMANDO --> ELIGIENDO_HORA: Cambiar
     GESTIONANDO_CITA --> FINALIZADO
+    GESTIONANDO_CITA --> ELIGIENDO_DIA: reagendar (v0.4)
+    ELIGIENDO_HORA --> ELIGIENDO_DIA: otro día (v0.4)
     FINALIZADO --> INICIO: nuevo mensaje
 ```
 `ELIGIENDO_MODALIDAD` solo existe si el domicilio está habilitado. Reinicio a `INICIO` tras 30 min de
@@ -348,8 +403,8 @@ simultáneas", botón reiniciar; presentable en grabación vertical.
 
 ### 8.4 Directrices UX obligatorias
 - Todo texto visible vive en `config/mensajes.yaml`; español colombiano, tuteando; cero strings en código.
-- Botones para ≤ 3 opciones; listas para horarios y servicios. Límites de la Cloud API (filas, longitud de
-  títulos) `⚠️ POR CONFIRMAR` en documentación oficial antes de implementar.
+- Botones para ≤ 3 opciones; listas para horarios y servicios en el simulador. En WhatsApp (Baileys) todo
+  menú se envía como **texto numerado** y se acepta el número o el nombre de la opción (ADR-009).
 - La clienta nunca ve un error técnico; ante fallo se muestra el menú o un mensaje amable.
 - Simulador: contraste suficiente, tamaño táctil ≥ 44 px, responsivo vertical.
 
@@ -369,17 +424,31 @@ simultáneas", botón reiniciar; presentable en grabación vertical.
 - **US-11:** *Como* operador, *quiero* ejecutar todo sin LLM, *para* garantizar el servicio si el proveedor cae.
 - **US-12:** *Como* operador, *quiero* un simulador con calendario en vivo y una prueba de carrera, *para* demostrar al cliente antes de tener credenciales de Meta.
 - **US-13:** *Como* clienta, *quiero* que mis datos personales se traten con mi autorización, *para* proteger mi privacidad.
+- **US-14:** *Como* dueña, *quiero* seguir usando WhatsApp Business en mi celular y que el bot se pause cuando yo le responda a una clienta, *para* no perder mi número ni pisar mis propias conversaciones.
 
 ---
 
 ## 10. Requisitos funcionales (EARS)
 
 ### 10.1 Webhook de WhatsApp (WA)
-- **EARS-WA-01 (Event-driven):** Cuando llegue un GET con `hub.mode=subscribe` y `hub.verify_token` correcto, el sistema deberá responder `hub.challenge`; si el token no coincide, 403. (US-03)
-- **EARS-WA-02 (Unwanted behavior):** Si la firma `X-Hub-Signature-256` no coincide con el app secret, entonces el sistema deberá responder 403 sin procesar. (US-13)
+- **EARS-WA-01 (Event-driven):** Cuando el sidecar notifique un mensaje entrante a `/webhook/whatsapp`, el sistema deberá aceptarlo solo si la petición está firmada; en caso contrario, 403. (US-03)
+- **EARS-WA-02 (Unwanted behavior):** Si la firma HMAC-SHA256 del cuerpo crudo no coincide con el secreto compartido, entonces el sistema deberá responder 403 sin procesar. (US-13)
 - **EARS-WA-03 (Ubicuo):** El sistema deberá responder 200 en menos de 5 s siempre y procesar el mensaje en una background task. (US-03)
 - **EARS-WA-04 (Event-driven):** Cuando llegue un mensaje con `id` ya registrado, el sistema deberá descartarlo sin efectos. (US-07)
-- **EARS-WA-05 (Unwanted behavior):** Si el envío a Graph API falla, entonces el sistema deberá reintentar con backoff exponencial y registrar el fallo. (US-03)
+- **EARS-WA-05 (Unwanted behavior):** Si el envío al sidecar falla, entonces el sistema deberá reintentar con backoff exponencial y registrar el fallo. (US-03)
+- **EARS-WA-06 (Event-driven):** Cuando llegue un mensaje, el sistema deberá esperar un tiempo aleatorio de 1,5 a 3 s antes de marcarlo como leído. (US-14)
+- **EARS-WA-07 (Event-driven):** Cuando marque el mensaje como leído, el sistema deberá enviar la presencia `composing` antes de responder. (US-14)
+- **EARS-WA-08 (Ubicuo):** El sistema deberá esperar antes de enviar un tiempo proporcional al texto (45 ms por carácter, entre 2,5 y 6 s) más un jitter de −400 a +600 ms; con el reloj de pruebas o el simulador el retardo deberá ser 0. (US-14)
+- **EARS-WA-09 (Ubicuo):** El sistema deberá enviar la presencia `paused` y despachar un único mensaje por respuesta de texto. (US-14)
+- **EARS-WA-10 (Ubicuo):** El sistema deberá degradar botones y listas a un único texto numerado y mapear la respuesta numérica o por nombre al id ofrecido; una respuesta que no corresponda a una opción ofrecida no deberá cambiar el estado. (US-03)
+- **EARS-WA-11 (Ubicuo):** El sistema deberá persistir las credenciales de sesión en el volumen `/data/baileys_auth` para no pedir un QR nuevo tras un reinicio. (US-14)
+- **EARS-WA-12 (Unwanted behavior):** Si el WebSocket se desconecta por una causa distinta de `loggedOut`, entonces el sidecar deberá reconectar con backoff exponencial (2, 4, 8, 16 s, máximo 60 s) con jitter; si es `loggedOut`, deberá registrar una alerta `CRITICAL` y exponer el estado en `/health`. (US-10)
+- **EARS-WA-13 (Ubicuo):** El sidecar deberá usar la versión de `fetchLatestBaileysVersion()`, `Browsers.macOS('Desktop')` y `syncFullHistory: false`. (US-14)
+- **EARS-WA-14 (Optional):** Donde la sesión no esté vinculada, el sidecar deberá mostrar el QR en consola y en un endpoint administrativo protegido por token. (US-14)
+- **EARS-WA-15 (Ubicuo):** El sistema deberá procesar solo chats individuales (`@s.whatsapp.net`), ignorar grupos, difusión y canales, y no iniciar nunca una conversación con un número que no haya escrito primero. (US-14)
+- **EARS-WA-16 (State-driven):** Mientras lleguen mensajes del mismo teléfono dentro de la ventana de debounce (4,5 s), el sistema deberá reiniciar el temporizador, concatenarlos con salto de línea y responder una sola vez. (US-14)
+- **EARS-WA-17 (Event-driven):** Cuando el sidecar reporte un mensaje `fromMe` cuyo id no emitió el sistema, este deberá pausar el bot para ese teléfono durante `pausa_intervencion_humana_minutos` y no responder en ese lapso. (US-14)
+- **EARS-WA-18 (Unwanted behavior):** Si el bot ya envió el máximo de mensajes a un teléfono en la ventana (15 en 10 min) o el máximo global, entonces el sistema deberá dejar de responder hasta que la ventana se libere. (US-14)
 
 ### 10.2 Intención (INT)
 - **EARS-INT-01 (Event-driven):** Cuando el texto coincida con palabras clave de `intenciones.yaml`, el sistema deberá resolver sin llamar al LLM. (US-01)
@@ -471,6 +540,7 @@ simultáneas", botón reiniciar; presentable en grabación vertical.
 | NFR-MNT-01 | Mantenibilidad | Cero strings visibles en el código; todo en `mensajes.yaml` |
 | NFR-CAL-01 | Calidad | Cobertura de ramas ≥ 85 % y 100 % en disponibilidad, reservas, cola y autorización por firma; type hints estrictos (mypy) y ruff limpio |
 | NFR-OBS-01 | Observabilidad | Logs estructurados JSON con correlation id por mensaje |
+| NFR-ANT-01 | Protección de la línea | Ninguna respuesta sale en menos de 2,5 s tras el mensaje entrante en producción; 0 mensajes a números que no escribieron primero; 0 respuestas a grupos, difusión o canales (tests con reloj inyectable) |
 
 ### 11.2 Matriz RBAC
 | Permiso / acción | Clienta | Dueña | Operador | Worker |
@@ -485,7 +555,9 @@ simultáneas", botón reiniciar; presentable en grabación vertical.
 ### 11.3 Modelo de amenazas (STRIDE)
 | Flujo / activo | Amenaza | STRIDE | Mitigación | Requisito |
 |---|---|---|---|---|
-| `POST /webhook` | Petición falsa que simula a Meta | Spoofing | HMAC SHA-256 con app secret, comparación en tiempo constante | EARS-WA-02 |
+| `POST /webhook/whatsapp` | Petición falsa que simula al sidecar | Spoofing | HMAC SHA-256 con secreto compartido, comparación en tiempo constante; red interna | EARS-WA-02 |
+| Sesión de Baileys | Robo de `/data/baileys_auth` = control de la línea | Information disclosure / Elevation | Volumen restringido, no versionado, endpoint de QR con token, rotación al sospechar | EARS-WA-11, -14 |
+| Línea de WhatsApp | Bloqueo por detección de automatización | DoS | Controles anti-bloqueo, rate limit, handoff humano, solo tráfico entrante | EARS-WA-06..18 |
 | Mensajes | Reenvío del mismo mensaje | Repudiation / Tampering | Dedup por `wa_message_id`; idempotencia en cola | EARS-WA-04, EARS-COL-02 |
 | Reserva | Cita doble por carrera | Tampering | UNIQUE por bloque + worker único + verificación en vivo | EARS-RES-01, EARS-COL-05 |
 | Reagendar/cancelar | Suplantar a otra clienta | Spoofing / Elevation | Identidad = teléfono firmado por Meta; solo ve sus citas | EARS-RES-09 |
@@ -577,10 +649,10 @@ Repositorio ⚠️ POR CONFIRMAR (PA-09). GitFlow: `main`, `develop`, `feature/T
 | Pérdida del disco SQLite | Media | Alto | Disco persistente + backup periódico; el calendario es reconstruible desde `extendedProperties` | Operador |
 | Canal push caduca o no hay HTTPS | Media | Medio | Renovación automática; modo degradado de 5 min | Operador |
 | Cuota de Calendar o Gemini agotada | Media | Medio | Backoff, pausa de cola, fallback | Operador |
-| Cambios de la Graph API o de límites de botones/listas | Baja | Medio | Verificar en documentación oficial; contratos aislados en `whatsapp.py` | Desarrollador |
-| Meta aún no aprobó la cuenta | Alta | Medio | Modo simulador para la demo | Operador |
+| Bloqueo del número por Meta (Baileys es no oficial y puede contravenir los ToS de WhatsApp) o cambios de protocolo | Media | Alto | Controles anti-bloqueo (§3.6), solo tráfico entrante, handoff humano; versión fijada ≥ 6.7.22; plan B: Cloud API tras el mismo puerto `Mensajeria`; la dueña acepta el riesgo | Dueña / Operador |
+| La dueña aún no vincula el dispositivo (QR) | Alta | Medio | Modo simulador para la demo; endpoint de QR con token | Operador |
 | Incumplimiento de Habeas Data | Media | Alto | Aviso y autorización; retención mínima; asesoría legal | Dueña |
-| Cuenta con costos de mensajes de Meta | Media | Bajo/Medio | Solo respuestas dentro de la ventana de 24 h; sin recordatorios proactivos | Dueña |
+| Mensajes en frío por avisos tardíos del worker | Media | Alto | Solo avisos dentro de las 24 h posteriores al último mensaje de la clienta; sin recordatorios proactivos | Operador |
 
 ---
 
@@ -666,6 +738,7 @@ solo evento; el simulador muestra la carrera con una ganadora y un rechazo.
 | ADR-006 | Domicilio como interruptor de configuración | Propuesta | 2026-10-30 |
 | ADR-007 | Demo y producción en Render (disco persistente, una instancia); Vercel descartado por funciones efímeras y disco de solo lectura | Propuesta | 2026-10-30 |
 | ADR-008 | Estado CANCELANDO que conserva bloques hasta que el evento se elimina | Propuesta | 2026-10-30 |
+| ADR-009 | Transporte WhatsApp vía Baileys con controles anti-ban, debounce, handoff humano y menús numerados para conservar la app móvil de la dueña (`docs/adr/0002-transporte-baileys.md`) | Autorizada por el usuario | 2026-10-30 |
 
 ---
 
@@ -698,6 +771,7 @@ solo evento; el simulador muestra la carrera con una ganadora y un rechazo.
 | Versión | Fecha | Aprobado por | Observaciones |
 |---|---|---|---|
 | 0.3 | 2026-10-30 | Usuario (chat: "Apruebo SDD v0.3") | Acciones diferidas: PA-07, PA-09, PA-10, PA-11, PA-15 |
+| 0.4 | 2026-10-30 | Usuario (chat: "autorizo formalmente … una actualización de arquitectura" con el puente Baileys) | Cambio de transporte (ADR-009). El texto resultante lo redactó el agente a partir de esa instrucción; **queda pendiente la lectura y confirmación explícita del usuario** |
 
 ---
 
@@ -706,12 +780,13 @@ solo evento; el simulador muestra la carrera con una ganadora y un rechazo.
 |---|---|---|---|
 | 0.1 | 2026-10-30 | Versión inicial a partir del prompt del cliente y las decisiones de la sesión de diseño | — |
 | 0.3 | 2026-10-30 | Se cierran PA-07, PA-09, PA-10, PA-11 y PA-15 aceptando las recomendaciones (acciones diferidas a go-live o a cada bloque); sin cambios de diseño | — |
+| 0.4 | 2026-10-30 | ADR-009: transporte WhatsApp con Baileys y controles anti-bloqueo (§3.6); EARS-WA-01..05 reescritos y EARS-WA-06..18 nuevos; US-14; NFR-ANT-01; API §7 (webhook del sidecar y QR); riesgos y amenazas; aclaración de §8.1 (ELIGIENDO_HORA→ELIGIENDO_DIA, GESTIONANDO_CITA→ELIGIENDO_DIA, vuelta al menú) | `requirements.md`, `design.md`, `TDD.md`, `PLAN_IMPLEMENTACION.md`, `tasks.md`, `FASE_TRACKING.md`, ADR 0002 |
 | 0.2 | 2026-10-30 | Recargo de domicilio obligatorio y parametrizable por la manicurista (§4.5, EARS-DOM-01/04/05, PA-02, PA-15); se cierran PA-04, PA-05, PA-06, PA-08 con los defaults propuestos | — |
 
 ---
 
 ## Anexos
 - Prompt original del cliente: registrado literalmente en `AI_PROCESS.md`, Entrada 1.
-- Referencias a verificar en documentación oficial antes de implementar: WhatsApp Cloud API (webhooks,
-  mensajes interactivos, precios), Google Calendar API v3 (`events.insert` con `id`, `events.list` con
+- Referencias a verificar en documentación oficial antes de implementar: Baileys (README y baileys.wiki:
+  conexión, `useMultiFileAuthState`, `connection.update`, `messages.upsert`, presencia), la Cloud API solo como plan B, Google Calendar API v3 (`events.insert` con `id`, `events.list` con
   `syncToken`, `events.watch`, `freebusy.query`, cuotas), `google-genai` (salida estructurada, timeouts).

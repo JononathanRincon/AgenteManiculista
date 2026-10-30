@@ -762,3 +762,20 @@
 - **Intentos del bucle interno:** 1/3 por tarea (más una corrección de id).
 - **Estado actualizado:** tasks.md TASK-23 a 29 y 56 `[x]`; Fase 7 `✅`; Fase 8 `⏳`.
 - **Pendiente derivado:** la prueba e2e comprueba que `google.genai` no esté en `sys.modules`; cuando el Bloque 7 importe Gemini habrá que aislarla en un subproceso.
+
+## Entrada 17 — 2026-10-30 — Cambio de requisito: SDD v0.4, ADR-009 (transporte Baileys con controles anti-ban)
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code
+- **Fase / tarea:** Fase 2 (volver al diseño, AGENTS.md §7: requisito nuevo → SDD) · rama `feature/docs-sdd-v04`
+- **Prompt utilizado (literal, resumen del pegado):** la clienta no migra su número a la Cloud API porque debe conservar la app de WhatsApp Business; el usuario autoriza formalmente actualizar `SDD.md` (v0.4), `design.md`, `requirements.md`, `PLAN_IMPLEMENTACION.md` y `tasks.md` para reemplazar/complementar el transporte de Graph API por un sidecar con `@whiskeysockets/baileys`, con tres bloques anti-bloqueo (humanización, sesión/red, reglas de oro: solo entrante, debounce, handoff humano, rate limit), mantener intacto el dominio y continuar con los Bloques 6, 7 y 8.
+- **Output del agente:**
+  - `SDD.md` v0.4: §3.2, nueva §3.6 con diagrama Mermaid, §5, §7, §8.4, US-14, EARS-WA-01..05 reescritos y EARS-WA-06..18 nuevos, NFR-ANT-01, STRIDE, riesgos, ADR-009, §20.2 y §21, aclaración del diagrama §8.1.
+  - `docs/adr/0002-transporte-baileys.md`; `requirements.md`, `design.md` (§B8 reescrito, DDL, variables de entorno, servicio `sidecar`), `TDD.md`, `docs/threat-model.md` (T1 ajustado, T15, T16).
+  - `tasks.md`: TASK-41, 42, 43 y 59 marcadas `[-]` con justificación; TASK-63 a TASK-72 agregadas al final del Bloque 8; `PLAN_IMPLEMENTACION.md` ítems 10.6 a 10.8; `FASE_TRACKING.md` línea v0.4.
+- **Decisiones de diseño:** sidecar delgado en Node.js; toda la política anti-ban en Python (testeable con reloj inyectable y cobertura medida); en lugar de Evolution API (más superficie); el worker conserva la ventana de 24 h como regla propia para no escribir en frío; Cloud API queda como plan B detrás del mismo puerto.
+- **Documentación oficial consultada:** registro de npm (`@whiskeysockets/baileys`: etiqueta `latest` 7.0.0-rc14, `legacy` 6.7.24, MIT; aviso de seguridad GHSA-qvv5-jq5g-4cgg para versiones anteriores a 6.7.22 / 7.0.0-rc12) y README del repositorio (conexión con `useMultiFileAuthState`, `connection.update`, `DisconnectReason.loggedOut`, `messages.upsert`, `readMessages`, `sendPresenceUpdate`). El README no documenta `composing`/`paused` ni mensajes interactivos; la versión y los detalles se verifican otra vez en TASK-70 antes de escribir el sidecar.
+- **Advertencia registrada:** Baileys es no oficial; el propio proyecto advierte que no respalda usos que infrinjan los Términos de Servicio de WhatsApp ni el envío automatizado masivo. El riesgo de bloqueo del número no se elimina; queda en SDD §14 y ADR-009 como riesgo aceptado por la dueña.
+- **Incidente corregido:** el script `cierre.py` marcaba `[x]` todos los ítems de `PLAN_IMPLEMENTACION.md` posteriores a la fase cerrada (mal límite de sección); se restauraron los marcadores de las fases 8 a 13 a `[ ]` (cambio solo de marcadores) y se corrigió el script.
+- **Aprobación:** el usuario autorizó la actualización por chat; el texto resultante de la v0.4 no ha sido leído por el usuario, por lo que §20.2 lo deja registrado como pendiente de confirmación.
+- **Pruebas:** no aplica (solo documentación); la suite completa sigue verde.
+- **Estado actualizado:** Bloque 8 con 10 tareas nuevas; siguiente en el backlog: Bloque 6 (TASK-30).

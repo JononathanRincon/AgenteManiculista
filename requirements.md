@@ -5,7 +5,7 @@
 > No agrega requisitos nuevos: si falta algo, se actualiza primero el SDD y el usuario lo re-aprueba.
 > **Solo lectura para el agente.** En el loop se leen únicamente las US, EARS y NFR que cita la tarea.
 
-Versión del SDD de origen: 0.3 · Fecha: 2026-10-30
+Versión del SDD de origen: 0.4 · Fecha: 2026-10-30 (v0.4: transporte Baileys, ADR-009)
 
 ---
 
@@ -33,6 +33,7 @@ al sistema; ≥ 80 % de conversaciones de agenda sin intervención (propuesta).
 - **US-05:** *Como* clienta, *quiero* cancelar mi cita, *para* liberar el espacio.
 - **US-06:** *Como* clienta, *quiero* elegir atención en local o a domicilio cuando la dueña lo ofrezca, *para* la modalidad que me convenga.
 - **US-13:** *Como* clienta, *quiero* que mis datos personales se traten con mi autorización, *para* proteger mi privacidad.
+- **US-14:** *Como* dueña, *quiero* seguir usando WhatsApp Business en mi celular y que el bot se pause cuando yo le responda a una clienta, *para* no perder mi número ni pisar mis propias conversaciones.
 ### 3.2 Dueña
 - **US-07:** *Como* dueña, *quiero* que nunca haya dos citas a la misma hora, *para* dejar de tener cruces.
 - **US-08:** *Como* dueña, *quiero* ver las citas en mi Google Calendar del celular y poder agendar a mano, *para* no instalar nada nuevo.
@@ -46,11 +47,24 @@ al sistema; ≥ 80 % de conversaciones de agenda sin intervención (propuesta).
 Formato: `EARS-<DOMINIO>-NN (Tipo)`. Tipos: Ubicuo, Event-driven, State-driven, Unwanted behavior, Optional.
 
 ### 4.1 Webhook de WhatsApp (WA)
-- **EARS-WA-01 (Event-driven):** Cuando llegue un GET con `hub.mode=subscribe` y `hub.verify_token` correcto, el sistema deberá responder `hub.challenge`; si el token no coincide, 403. (US-03)
-- **EARS-WA-02 (Unwanted behavior):** Si la firma `X-Hub-Signature-256` no coincide con el app secret, entonces el sistema deberá responder 403 sin procesar. (US-13)
+- **EARS-WA-01 (Event-driven):** Cuando el sidecar notifique un mensaje entrante a `/webhook/whatsapp`, el sistema deberá aceptarlo solo si la petición está firmada; en caso contrario, 403. (US-03)
+- **EARS-WA-02 (Unwanted behavior):** Si la firma HMAC-SHA256 del cuerpo crudo no coincide con el secreto compartido, entonces el sistema deberá responder 403 sin procesar. (US-13)
 - **EARS-WA-03 (Ubicuo):** El sistema deberá responder 200 en menos de 5 s siempre y procesar el mensaje en una background task. (US-03)
 - **EARS-WA-04 (Event-driven):** Cuando llegue un mensaje con `id` ya registrado, el sistema deberá descartarlo sin efectos. (US-07)
-- **EARS-WA-05 (Unwanted behavior):** Si el envío a Graph API falla, entonces el sistema deberá reintentar con backoff exponencial y registrar el fallo. (US-03)
+- **EARS-WA-05 (Unwanted behavior):** Si el envío al sidecar falla, entonces el sistema deberá reintentar con backoff exponencial y registrar el fallo. (US-03)
+- **EARS-WA-06 (Event-driven):** Cuando llegue un mensaje, el sistema deberá esperar un tiempo aleatorio de 1,5 a 3 s antes de marcarlo como leído. (US-14)
+- **EARS-WA-07 (Event-driven):** Cuando marque el mensaje como leído, el sistema deberá enviar la presencia `composing` antes de responder. (US-14)
+- **EARS-WA-08 (Ubicuo):** El sistema deberá esperar antes de enviar un tiempo proporcional al texto (45 ms por carácter, entre 2,5 y 6 s) más un jitter de −400 a +600 ms; con el reloj de pruebas o el simulador el retardo deberá ser 0. (US-14)
+- **EARS-WA-09 (Ubicuo):** El sistema deberá enviar la presencia `paused` y despachar un único mensaje por respuesta de texto. (US-14)
+- **EARS-WA-10 (Ubicuo):** El sistema deberá degradar botones y listas a un único texto numerado y mapear la respuesta numérica o por nombre al id ofrecido; una respuesta que no corresponda a una opción ofrecida no deberá cambiar el estado. (US-03)
+- **EARS-WA-11 (Ubicuo):** El sistema deberá persistir las credenciales de sesión en el volumen `/data/baileys_auth` para no pedir un QR nuevo tras un reinicio. (US-14)
+- **EARS-WA-12 (Unwanted behavior):** Si el WebSocket se desconecta por una causa distinta de `loggedOut`, entonces el sidecar deberá reconectar con backoff exponencial (2, 4, 8, 16 s, máximo 60 s) con jitter; si es `loggedOut`, deberá registrar una alerta `CRITICAL` y exponer el estado en `/health`. (US-10)
+- **EARS-WA-13 (Ubicuo):** El sidecar deberá usar la versión de `fetchLatestBaileysVersion()`, `Browsers.macOS('Desktop')` y `syncFullHistory: false`. (US-14)
+- **EARS-WA-14 (Optional):** Donde la sesión no esté vinculada, el sidecar deberá mostrar el QR en consola y en un endpoint administrativo protegido por token. (US-14)
+- **EARS-WA-15 (Ubicuo):** El sistema deberá procesar solo chats individuales (`@s.whatsapp.net`), ignorar grupos, difusión y canales, y no iniciar nunca una conversación con un número que no haya escrito primero. (US-14)
+- **EARS-WA-16 (State-driven):** Mientras lleguen mensajes del mismo teléfono dentro de la ventana de debounce (4,5 s), el sistema deberá reiniciar el temporizador, concatenarlos con salto de línea y responder una sola vez. (US-14)
+- **EARS-WA-17 (Event-driven):** Cuando el sidecar reporte un mensaje `fromMe` cuyo id no emitió el sistema, este deberá pausar el bot para ese teléfono durante `pausa_intervencion_humana_minutos` y no responder en ese lapso. (US-14)
+- **EARS-WA-18 (Unwanted behavior):** Si el bot ya envió el máximo de mensajes a un teléfono en la ventana (15 en 10 min) o el máximo global, entonces el sistema deberá dejar de responder hasta que la ventana se libere. (US-14)
 
 ### 4.2 Intención (INT)
 - **EARS-INT-01 (Event-driven):** Cuando el texto coincida con palabras clave de `intenciones.yaml`, el sistema deberá resolver sin llamar al LLM. (US-01)
@@ -138,6 +152,7 @@ Formato: `EARS-<DOMINIO>-NN (Tipo)`. Tipos: Ubicuo, Event-driven, State-driven, 
 | NFR-MNT-01 | Mantenibilidad | Cero strings visibles en el código; todo en `mensajes.yaml` |
 | NFR-CAL-01 | Calidad | Cobertura de ramas ≥ 85 % y 100 % en disponibilidad, reservas, cola y firma; mypy estricto y ruff limpio |
 | NFR-OBS-01 | Observabilidad | Logs estructurados JSON con correlation id por mensaje |
+| NFR-ANT-01 | Protección de la línea | Ninguna respuesta sale en menos de 2,5 s tras el mensaje entrante en producción; 0 mensajes a números que no escribieron primero; 0 respuestas a grupos, difusión o canales (tests con reloj inyectable) |
 
 ## 6. Datos y normativa
 | Dato | Clasificación | Normativa | Retención |
@@ -172,6 +187,11 @@ Formato: `EARS-<DOMINIO>-NN (Tipo)`. Tipos: Ubicuo, Event-driven, State-driven, 
 18. Mensaje no textual (audio, imagen) → respuesta amable con el menú. (EC-18)
 19. Clienta con el máximo de citas futuras pide agendar → se le ofrece reagendar o cancelar. (EC-19)
 20. El sync token de Calendar expira (410) → resincronización completa. (EC-20)
+21. La clienta manda tres mensajes seguidos en pocos segundos → se concatenan y se responde una sola vez. (EC-21)
+22. La dueña responde a mano desde su celular → el bot se pausa 2 h para esa clienta. (EC-22)
+23. Llega un mensaje de un grupo, de difusión o de un canal → se ignora. (EC-23)
+24. La clienta responde "2" o el nombre de una opción a un menú numerado → se mapea al id ofrecido; un número fuera del rango no cambia el estado. (EC-24)
+25. El sidecar pierde la sesión (`loggedOut`) → alerta CRITICAL y `/health` lo muestra; el bot no intenta enviar. (EC-25)
 
 ## 8. Fuera de alcance
 - ❌ Recordatorios proactivos (plantillas y costo por conversación): extensión futura.
@@ -199,4 +219,5 @@ Formato: `EARS-<DOMINIO>-NN (Tipo)`. Tipos: Ubicuo, Event-driven, State-driven, 
 | US-10 | OBS-01, INT-06 | §B8.4, §B7.4 | TASK-38, 44 |
 | US-11 | INT-03..05, NFR-DIS-01 | §B7.4 | TASK-29, 36, 38 |
 | US-12 | SIM-01..05 | §B6.4 | TASK-30..34 |
-| US-13 | WA-02, INT-02, INT-08, CON-06, NFR-PRI-01 | §B7.4, §B8.4 | TASK-28, 39, 41 |
+| US-13 | WA-02, INT-02, INT-08, CON-06, NFR-PRI-01 | §B7.4, §B8.4 | TASK-28, 39, 68 |
+| US-14 | WA-06..WA-18, NFR-ANT-01 | §B8.4 | TASK-63..TASK-72 |
