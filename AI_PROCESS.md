@@ -533,3 +533,59 @@
 - **Intentos del bucle interno:** 1/3
 - **Estado actualizado:** tasks.md TASK-01 `[x]` · FASE_TRACKING Fase 1 `✅`, Fase 2 `⏳`
 - **Pendientes o riesgos:** Python local es 3.14.2 y el proyecto exige 3.12: TASK-02 debe resolverlo (verificar el lanzador `py -3.12` o usar Docker). Los commits y merges de las tareas siguientes llevan la línea Co-Authored-By.
+
+## Entrada 9 — 2026-10-30 — TASK-02: herramientas de calidad y dependencias
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code
+- **Fase / tarea:** Fase 2 — Infraestructura · TASK-02
+- **Prompt utilizado (literal):**
+  ```text
+  Instalar uv y Python 3.12 (Recomendado)   [respuesta del usuario a la pregunta de cómo resolver Python 3.12]
+  ```
+- **Output del agente (mensaje final):**
+  ```text
+  pyproject.toml (ruff, mypy estricto, pytest, cobertura de ramas con umbral 85 %), Makefile (install, run, test, lint, ci),
+  uv.lock con versiones fijadas, prueba de humo. make lint y make test en verde.
+  ```
+- **Archivos creados o modificados:**
+  | Archivo | Líneas | Cambio |
+  |---|---|---|
+  | `pyproject.toml`, `uv.lock` | todo | Creados; dependencias fijadas por lockfile |
+  | `Makefile` | todo | Targets install, run, test, lint, ci |
+  | `app/__init__.py`, `tests/__init__.py`, `tests/unit/__init__.py`, `tests/unit/test_humo.py` | todo | Esqueleto y prueba de humo |
+- **Patrones y principios aplicados:** Quality gate por herramienta; lockfile reproducible.
+- **Comandos de terminal ejecutados:**
+  ```bash
+  python -m pip install --user uv==0.13.6          # uv 0.13.6 (paquete oficial de Astral en PyPI)
+  uv python install 3.12                           # CPython 3.12.16 en C:/Users/Galiatech/uv-python (UV_PYTHON_INSTALL_DIR);
+                                                   # la ruta por defecto falló al crear el enlace de versión menor
+  uv add ... ; uv add --dev ...                    # resolución contra PyPI
+  make lint ; make test                            # verde
+  ```
+- **Acciones de Git:**
+  - Rama: `feature/TASK-02-herramientas-calidad`
+  - Commits: ver merge en develop
+  - Merge: ver `git log` de develop
+- **Dependencias agregadas (verificadas en PyPI por resolución de uv; nombres canónicos de proyectos oficiales):**
+  | Paquete | Versión fijada | Justificación |
+  |---|---|---|
+  | fastapi | 0.162.0 | API y webhooks (obligatorio por el cliente) |
+  | uvicorn | 0.54.0 | Servidor ASGI (obligatorio) |
+  | sqlalchemy | 2.1.6 | ORM sobre SQLite (obligatorio) |
+  | pydantic, pydantic-settings | 2.14.2, 2.16.2 | Esquemas estrictos y configuración |
+  | httpx | 0.28.1 | Cliente de Graph API con timeouts |
+  | pyyaml | 6.0.3 | Lectura de `config/*.yaml` |
+  | python-dotenv | 1.2.4 | Carga de `.env` (obligatorio) |
+  | google-api-python-client, google-auth | 2.201.0, 2.62.0 | Calendar API v3 con service account |
+  | google-genai | 2.34.0 | Capa de intención con Gemini |
+  | dev: ruff 0.17.3, mypy 2.4.1, pytest 9.2.0, pytest-asyncio 1.4.1, pytest-cov 7.1.0, pip-audit 2.10.1, types-pyyaml | — | Calidad: lint, tipos, pruebas, cobertura, auditoría |
+- **Reporte de pruebas:**
+  | Suite / nivel | Total | ✅ Pasaron | ❌ Fallaron | Cobertura ramas (medida) |
+  |---|---|---|---|---|
+  | Unitarias (humo) | 2 | 2 | 0 | 100 % (0 sentencias; sin código de dominio aún) |
+  | **Total** | 2 | 2 | 0 | 100 % |
+- **Casos ejecutados:**
+  - [x] `tests/unit/test_humo.py`: paquete importable y Python 3.12 (NFR-CAL-01)
+- **Intentos del bucle interno:** 1/3 (el aviso de pytest-asyncio se corrigió fijando el scope del loop)
+- **Estado actualizado:** tasks.md TASK-02 `[x]`
+- **Pendientes o riesgos:** El Python 3.12 gestionado por uv vive fuera del proyecto; `make install` lo necesita en `UV_PYTHON_INSTALL_DIR` en este equipo. Python 3.14 del sistema no se usa. `google-genai 2.34.0` y demás APIs se verifican en documentación al usarlas.
