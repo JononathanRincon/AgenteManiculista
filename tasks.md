@@ -696,7 +696,7 @@
   - Test: `pytest tests/integration/test_push.py -q`
   - Hecho cuando: push válido invalida el caché, inválido da 403 y el canal se renueva antes de caducar.
 
-- [ ] **TASK-47** · Implementar el modo degradado con refresco cada 5 minutos
+- [x] **TASK-47** · Implementar el modo degradado con refresco cada 5 minutos
   - Objetivo: seguir funcionando sin HTTPS público y registrarlo.
   - Trazabilidad: US-08, EARS-CAC-04 · Plan: 11.3
   - Diseño: design.md §1.5, §B9.4
