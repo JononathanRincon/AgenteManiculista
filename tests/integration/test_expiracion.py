@@ -81,8 +81,8 @@ def test_expira_libera_horario_avisa_y_cancela_el_trabajo(ent: Entorno) -> None:
 
 def test_no_expira_una_reserva_en_proceso(ent: Entorno) -> None:
     r = ent.reservar()
-    assert reclamar_siguiente(ent.engine, CAL, AHORA) is not None  # PROCESANDO
-    ent.reloj.avanzar(minutes=30)
+    ent.reloj.avanzar(minutes=11)
+    assert reclamar_siguiente(ent.engine, CAL, ent.reloj.ahora()) is not None  # PROCESANDO
     assert ent.worker.limpiar() == 0
     assert ent.estado(r.id) == "PENDIENTE"
 

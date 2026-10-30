@@ -289,7 +289,7 @@
   - Test: `pytest tests/integration/test_citas_futuras.py -q`
   - Hecho cuando: una clienta nunca ve ni modifica citas de otro teléfono.
 
-- [ ] **TASK-55** · Revisión del Bloque 4 con agentes en paralelo y cobertura medida
+- [x] **TASK-55** · Revisión del Bloque 4 con agentes en paralelo y cobertura medida
   - Objetivo: `code-reviewer`, `security-auditor` y `test-engineer` en paralelo; simplificación.
   - Trazabilidad: NFR-CAL-01, NFR-INT-01 · Plan: 6.6
   - Diseño: design.md §B4.5

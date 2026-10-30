@@ -34,6 +34,7 @@ from app.puertos import (
     Reloj,
 )
 from app.reservas import (
+    anonimizar_antiguas,
     cargar,
     completar_reagendar,
     confirmar,
@@ -50,6 +51,7 @@ TOPE_BACKOFF_S = 64
 JITTER_MAX_S = 1.0
 VENTANA_MENSAJERIA = timedelta(hours=24)
 RETENCION_MENSAJES = timedelta(days=7)
+ANTIGUEDAD_HUERFANO = timedelta(minutes=5)
 
 
 def _jitter_aleatorio() -> float:
@@ -113,8 +115,12 @@ class Worker:
         except _Ocupado:
             self._fallo_definitivo(trabajo, "ocupado en vivo")
         except ErrorPermanente as exc:
-            self._fallo_definitivo(trabajo, f"permanente: {exc}")
+            self._fallo_definitivo(trabajo, f"permanente: {type(exc).__name__}")
         except ErrorCalendario as exc:
+            self._reintentar_o_fallar(trabajo, exc)
+        except Exception as exc:  # noqa: BLE001 - nunca dejar la fila trabada en PROCESANDO
+            nombre = type(exc).__name__
+            log.error("trabajo_error_inesperado", extra={"trabajo": trabajo.id, "error": nombre})
             self._reintentar_o_fallar(trabajo, exc)
         return True
 
@@ -122,8 +128,10 @@ class Worker:
     def limpiar(self) -> int:
         """Expira reservas PENDIENTE vencidas, avisa y borra mensajes procesados viejos."""
         ahora = self._reloj.ahora()
+        cola.recuperar_huerfanos(self._engine, ahora, antiguedad=ANTIGUEDAD_HUERFANO)
         with unidad_de_trabajo(self._engine) as s:
             expiradas = expirar_pendientes(s, self._config, ahora)
+            anonimizar_antiguas(s, ahora)
             s.execute(
                 delete(MensajeProcesado).where(
                     MensajeProcesado.recibido_en < ahora - RETENCION_MENSAJES
@@ -263,10 +271,12 @@ class Worker:
         self._avisar(nueva, "reagendar_ok")
 
     # --- errores ---
-    def _reintentar_o_fallar(self, trabajo: cola.Trabajo, error: ErrorCalendario) -> None:
+    def _reintentar_o_fallar(self, trabajo: cola.Trabajo, error: Exception) -> None:
         ahora = self._reloj.ahora()
         if trabajo.intentos >= MAX_INTENTOS:
-            self._fallo_definitivo(trabajo, f"agotó {MAX_INTENTOS} intentos: {error}")
+            self._fallo_definitivo(
+                trabajo, f"agotó {MAX_INTENTOS} intentos: {type(error).__name__}"
+            )
             return
         espera = espera_backoff(trabajo.intentos, self._jitter())
         proxima = ahora + timedelta(seconds=math.ceil(espera))  # las fechas se guardan al segundo
@@ -283,9 +293,12 @@ class Worker:
         if trabajo.tipo == "CREAR":
             reserva = self._liberar_si(trabajo, "FALLIDA", ("PENDIENTE", "CANCELANDO"))
             if reserva is not None:
+                self._encolar_limpieza_de_huerfano(trabajo, reserva)
                 self._avisar(reserva, "cita_fallida")
         elif trabajo.tipo == "REAGENDAR":
             self._revertir(trabajo)
+        else:  # ELIMINAR (ACTUALIZAR no tiene casos de uso y nunca falla)
+            self._cancelacion_fallida(trabajo)
 
     def _liberar_si(
         self, trabajo: cola.Trabajo, final: str, estados: tuple[str, ...]
@@ -298,6 +311,32 @@ class Worker:
             liberar(s, reserva, final, ahora)
         self._invalidar(reserva)
         return reserva
+
+    def _encolar_limpieza_de_huerfano(self, trabajo: cola.Trabajo, reserva: Reserva) -> None:
+        """Tras varios intentos pudo quedar un evento creado: se encola su eliminación."""
+        if trabajo.intentos <= 1:
+            return
+        with unidad_de_trabajo(self._engine) as s:
+            cola.encolar(
+                s,
+                calendario_id=self._cal_id,
+                tipo="ELIMINAR",
+                payload={"reserva_id": reserva.id},
+                clave=cola.clave_idempotencia(
+                    reserva.telefono, reserva.inicio, "ELIMINAR-HUERFANO", reserva.id
+                ),
+                reserva_id=reserva.id,
+                ahora=self._reloj.ahora(),
+            )
+
+    def _cancelacion_fallida(self, trabajo: cola.Trabajo) -> None:
+        """Si no se pudo borrar el evento, la cita sigue viva: vuelve a CONFIRMADA."""
+        with unidad_de_trabajo(self._engine) as s:
+            reserva = cargar(s, int(trabajo.payload["reserva_id"]))
+            if reserva.estado == "CANCELANDO":
+                reserva.estado = "CONFIRMADA"
+                reserva.actualizado_en = self._reloj.ahora()
+        log.error("cancelacion_fallida", extra={"reserva": reserva.id})
 
     def _revertir(self, trabajo: cola.Trabajo) -> None:
         ahora = self._reloj.ahora()

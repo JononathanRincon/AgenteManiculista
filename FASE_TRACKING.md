@@ -95,19 +95,19 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 ## Fase 6 — Reservas, cola y worker (Bloque 4)
 > **Criterio de desbloqueo:** Fase 5 cerrada.
 
-- [ ] ⏳ **6.1 Reservas y concurrencia**
-  - [ ] **Integración:** `test_reservas.py`, `test_concurrencia.py`
+- [x] ✅ **6.1 Reservas y concurrencia**
+  - [x] **Integración:** `test_reservas.py`, `test_concurrencia.py`
   - Tareas: TASK-14, TASK-15
-- [ ] 🕓 **6.2 Cola, worker, expiración, cancelar y reagendar**
-  - [ ] **Integración:** `test_cola.py`, `test_worker.py`, `test_expiracion.py`, `test_cancelar.py`, `test_reagendar.py`, `test_citas_futuras.py`
+- [x] ✅ **6.2 Cola, worker, expiración, cancelar y reagendar**
+  - [x] **Integración:** `test_cola.py`, `test_worker.py`, `test_expiracion.py`, `test_cancelar.py`, `test_reagendar.py`, `test_citas_futuras.py`
   - Tareas: TASK-16 … TASK-22, TASK-55
-  - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida; objetivo 100 %)
-  - Cierre: <fecha> · AI_PROCESS #<N>
+  - Pruebas: pasadas 183 · fallidas 0 · cobertura ramas 100 % (medida; objetivo 100 %)
+  - Cierre: 2026-10-30 · AI_PROCESS #15
 
 ## Fase 7 — Máquina de estados (Bloque 5)
 > **Criterio de desbloqueo:** Fase 6 cerrada.
 
-- [ ] 🕓 **7.1 Conversación y flujos**
+- [ ] ⏳ **7.1 Conversación y flujos**
   - [ ] **Unitarias:** `test_conversacion.py`, `test_domicilio.py`, `test_gestion.py`, `test_palabras_clave.py`, `test_dedup_aviso.py`
   - [ ] **E2E:** `tests/e2e/test_agendar_sin_llm.py`
   - Tareas: TASK-23 … TASK-29, TASK-56
