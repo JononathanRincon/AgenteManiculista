@@ -448,7 +448,7 @@
 ## Bloque 7 — Capa de intención (Fase 9)
 *Skills:* `arquitecto-de-prompts`, `source-driven-development`, `security-and-hardening`, `test-driven-development`
 
-- [ ] **TASK-35** · Definir el esquema Pydantic estricto de la intención
+- [x] **TASK-35** · Definir el esquema Pydantic estricto de la intención
   - Objetivo: validar intención, servicio, fecha, franja y confianza; invalidar la respuesta completa si algo no cuadra.
   - Trazabilidad: US-11, EARS-INT-03, EC-09 · Plan: 9.1
   - Diseño: design.md §B7.2, §B7.4
