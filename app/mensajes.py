@@ -83,6 +83,7 @@ CLAVES_REQUERIDAS: frozenset[str] = frozenset(
         "evento_descripcion",
         "evento_extra_domicilio",
         "nombre_negocio",
+        "nombre_desconocido",
         *_CLAVES_FORMATO,
     }
 )
