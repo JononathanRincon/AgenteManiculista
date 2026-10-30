@@ -199,7 +199,7 @@
 ## Bloque 4 — Reservas, cola y worker (Fase 6)
 *Skills:* `incremental-implementation`, `test-driven-development`, `security-and-hardening`, `debugging-and-error-recovery`
 
-- [ ] **TASK-14** · Implementar `reservar` transaccional con bloques UNIQUE
+- [x] **TASK-14** · Implementar `reservar` transaccional con bloques UNIQUE
   - Objetivo: reserva + bloques + trabajo CREAR en una sola transacción; idempotente para la misma clienta.
   - Trazabilidad: US-07, EARS-RES-01, EARS-RES-02, EARS-RES-03, EARS-COL-02 · Plan: 6.1
   - Diseño: design.md §2.3, §B4.2, §B4.4
