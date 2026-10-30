@@ -47,7 +47,7 @@
   - Test: `make lint && make test`
   - Hecho cuando: lint y tipos pasan en un proyecto vacío con un test trivial y la cobertura de ramas se mide.
 
-- [ ] **TASK-03** · Crear Dockerfile multi-stage y docker-compose de desarrollo
+- [x] **TASK-03** · Crear Dockerfile multi-stage y docker-compose de desarrollo
   - Objetivo: contenedor único, no root, con `HEALTHCHECK`.
   - Trazabilidad: NFR-DES-01 · Plan: 2.3
   - Diseño: design.md §5
