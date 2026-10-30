@@ -144,6 +144,7 @@
 - [ ] **11.3** Modo degradado
 - [ ] **11.4** Revisión del bloque
 - [ ] **11.5** Cableado de producción (TASK-73)
+- [ ] **11.6** Correcciones de la auditoría del bloque (TASK-74)
 
 ### Fase 12 — Documentación (Bloque 10)
 *Skills:* `documentation-and-adrs`

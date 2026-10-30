@@ -726,6 +726,16 @@
   - Test: `pytest tests/integration/test_produccion.py -q`
   - Hecho cuando: con ajustes de producción simulados la pasarela, el worker y el canal existen, el webhook de Calendar invalida el caché y el cierre no deja tareas vivas.
 
+- [ ] **TASK-74** · Corregir los hallazgos medios y bajos de la auditoría del Bloque 9
+  - Objetivo: M1 espejo sin eventos futuros fuera de ventana, M3 simulador en producción, M4 límite de tasa tras autenticar, B1/B3/B4/I1.
+  - Trazabilidad: NFR-CAL-01, EARS-CAC-02, EARS-CAC-06 · Plan: 11.6
+  - Diseño: design.md §B9.4
+  - Skill: `/agent-skills:test`, `debugging-and-error-recovery`
+  - Archivos: `app/calendario.py`, `app/cache.py`, `app/webhook.py`, `app/config.py`, `app/produccion.py`, `app/canal.py`, `tests/`
+  - Entregable: correcciones con pruebas que fallaban antes
+  - Test: `pytest tests/integration/test_calendario_google.py tests/integration/test_push.py tests/unit/test_settings.py -q`
+  - Hecho cuando: un evento futuro fuera de la ventana entra al espejo, `SIMULADOR` con `produccion` no arranca y un flood de tokens falsos no bloquea el token válido.
+
 ## Bloque 10 — Documentación (Fase 12)
 *Skills:* `documentation-and-adrs`
 
