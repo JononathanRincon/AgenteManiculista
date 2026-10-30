@@ -749,7 +749,7 @@
   - Test: `make lint`
   - Hecho cuando: el diagrama renderiza y cada variable de `.env.example` está documentada.
 
-- [ ] **TASK-49** · Redactar el manual para la clienta (dueña) sin tecnicismos
+- [x] **TASK-49** · Redactar el manual para la clienta (dueña) sin tecnicismos
   - Objetivo: crear WhatsApp Business, compartir el calendario, cambiar precios y horarios, activar el domicilio y su recargo.
   - Trazabilidad: US-09, EARS-DOM-05 · Plan: 12.2
   - Diseño: design.md §B10.4
