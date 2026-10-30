@@ -302,7 +302,7 @@
 ## Bloque 5 — Máquina de estados (Fase 7)
 *Skills:* `incremental-implementation`, `test-driven-development`
 
-- [ ] **TASK-23** · Implementar estados, transiciones y reinicio por inactividad
+- [x] **TASK-23** · Implementar estados, transiciones y reinicio por inactividad
   - Objetivo: tabla de transiciones persistida por teléfono.
   - Trazabilidad: US-03, EARS-CON-01, EARS-CON-02 · Plan: 7.1
   - Diseño: design.md §B5.2, §B5.4
