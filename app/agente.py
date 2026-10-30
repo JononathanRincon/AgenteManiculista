@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import date, datetime, time
 from zoneinfo import ZoneInfo
 
@@ -27,8 +28,17 @@ from app.conversacion import (
     guardar_sesion,
 )
 from app.formato import fecha, fecha_corta, hora, hora_reloj, precio
-from app.intencion import Reglas, cargar_reglas, resolver_faq, resolver_por_palabras_clave
+from app.intencion import (
+    UMBRAL_CONFIANZA,
+    Intencion,
+    Reglas,
+    cargar_reglas,
+    resolver_faq,
+    resolver_por_palabras_clave,
+)
+from app.llm.base import ProveedorLLM, ServicioResumen
 from app.mensajes import texto
+from app.metricas import MENSAJES_SIN_LLM, MENSAJES_TOTAL, incrementar
 from app.modelos import MensajeProcesado, Reserva, unidad_de_trabajo
 from app.puertos import Opcion, Reloj
 from app.reservas import (
@@ -46,7 +56,14 @@ from app.reservas import (
 
 log = logging.getLogger("agente")
 
-Atajo = Callable[[str], "list[Saliente] | str | None"]
+FRANJAS = {"manana": range(0, 12), "tarde": range(12, 18), "noche": range(18, 24)}
+
+
+@dataclass
+class Traza:
+    """Qué intervino en un mensaje; alimenta la métrica de mensajes resueltos sin LLM."""
+
+    uso_llm: bool = False
 
 
 def _opciones_menu() -> list[Opcion]:
@@ -64,14 +81,14 @@ class Agente:
         config: Config,
         cache: CacheDisponibilidad,
         reloj: Reloj,
-        atajo: Atajo | None = None,
+        proveedor: ProveedorLLM | None = None,
         reglas: Reglas | None = None,
     ) -> None:
         self._engine = engine
         self._config = config
         self._cache = cache
         self._reloj = reloj
-        self._atajo = atajo
+        self._proveedor = proveedor
         self._reglas = reglas or cargar_reglas()
         self._cal = config.negocio.calendario_id
 
@@ -85,9 +102,13 @@ class Agente:
             sesion = cargar_sesion(
                 s, entrante.telefono, ahora, self._config.negocio.inactividad_reinicio_minutos
             )
-        salidas = self._decidir(entrante, sesion, ahora)
+        traza = Traza()
+        salidas = self._decidir(entrante, sesion, ahora, traza)
         with unidad_de_trabajo(self._engine) as s:
             guardar_sesion(s, entrante.telefono, sesion, ahora)
+            incrementar(s, MENSAJES_TOTAL)
+            if not traza.uso_llm:
+                incrementar(s, MENSAJES_SIN_LLM)
         return salidas
 
     def _registrar(self, wa_message_id: str, ahora: datetime) -> bool:
@@ -99,7 +120,9 @@ class Agente:
         return True
 
     # --- decisión ---
-    def _decidir(self, e: Entrante, sesion: Sesion, ahora: datetime) -> list[Saliente]:
+    def _decidir(
+        self, e: Entrante, sesion: Sesion, ahora: datetime, traza: Traza
+    ) -> list[Saliente]:
         ctx = sesion.contexto
         if not sesion.aviso_aceptado:
             return self._aviso(e, sesion)
@@ -109,7 +132,7 @@ class Agente:
         if entrada is None and e.texto is not None:
             if ctx.esperando_direccion:
                 return self._recibir_direccion(e.texto, ctx, ahora)
-            respuesta = self._interpretar(e.texto)
+            respuesta = self._interpretar(e.texto, e, ctx, ahora, traza)
             if isinstance(respuesta, list):
                 return respuesta
             entrada = respuesta
@@ -120,24 +143,75 @@ class Agente:
             return self._reofrecer(ctx, e, ahora, desconocido=True)
         return manejador(entrada, e, ctx, ahora)
 
-    def _interpretar(self, mensaje: str) -> list[Saliente] | str | None:
-        """FAQ y palabras clave primero (sin LLM); si no hay coincidencia, el gancho opcional."""
+    def _interpretar(
+        self, mensaje: str, e: Entrante, ctx: Contexto, ahora: datetime, traza: Traza
+    ) -> list[Saliente] | str | None:
+        """FAQ y palabras clave primero (sin LLM); si no hay coincidencia, el LLM (si hay)."""
         faq = resolver_faq(mensaje, self._reglas)
         if faq is not None:
             return [Saliente("texto", texto(faq))]
-        intencion = resolver_por_palabras_clave(mensaje, self._reglas)
-        if intencion is not None:
-            respuestas: dict[str, list[Saliente] | str] = {
-                "agendar": "menu:agendar",
-                "reagendar": "menu:gestionar",
-                "cancelar": "menu:gestionar",
-                "saludo": "saludo:hola",
-                "consultar_precio": [Saliente("texto", self._texto_servicios())],
-                "consultar_horario": [Saliente("texto", self._texto_horario())],
-                "consultar_ubicacion": [Saliente("texto", self._texto_ubicacion())],
-            }
-            return respuestas[intencion]
-        return self._atajo(mensaje) if self._atajo is not None else None
+        nombre = resolver_por_palabras_clave(mensaje, self._reglas)
+        if nombre is not None:
+            return self._responder_intencion(nombre)
+        intencion = self._consultar_llm(mensaje, ctx, ahora)
+        if intencion is None:
+            return None
+        traza.uso_llm = True
+        if intencion.intencion == "agendar" and intencion.servicio_id is not None:
+            return self._agendar_con_datos(intencion, e, ctx, ahora)
+        return self._responder_intencion(intencion.intencion)
+
+    def _responder_intencion(self, nombre: str) -> list[Saliente] | str | None:
+        respuestas: dict[str, list[Saliente] | str] = {
+            "agendar": "menu:agendar",
+            "reagendar": "menu:gestionar",
+            "cancelar": "menu:gestionar",
+            "saludo": "saludo:hola",
+            "consultar_precio": [Saliente("texto", self._texto_servicios())],
+            "consultar_horario": [Saliente("texto", self._texto_horario())],
+            "consultar_ubicacion": [Saliente("texto", self._texto_ubicacion())],
+        }
+        return respuestas.get(nombre)
+
+    def _consultar_llm(self, mensaje: str, ctx: Contexto, ahora: datetime) -> Intencion | None:
+        """Pregunta al LLM solo texto, catálogo, fecha y estado; nunca lanza (EARS-INT-03/04)."""
+        if self._proveedor is None:
+            return None
+        catalogo = [ServicioResumen(s.id, s.nombre) for s in self._config.servicios]
+        hoy = ahora.astimezone(self._config.negocio.zona).date()
+        try:
+            intencion = self._proveedor.interpretar(mensaje, catalogo, hoy, ctx.estado.value)
+        except Exception:  # noqa: BLE001 - el contrato dice que no lanza; si lo hiciera, cae al menú
+            log.warning("llm_fallo_inesperado")
+            return None
+        if intencion is None or intencion.confianza < UMBRAL_CONFIANZA:
+            return None
+        if intencion.intencion == "desconocida":
+            return None
+        return intencion
+
+    def _agendar_con_datos(
+        self, intencion: Intencion, e: Entrante, ctx: Contexto, ahora: datetime
+    ) -> list[Saliente]:
+        """Salta pasos con lo que entendió el LLM, sin llegar nunca a CONFIRMANDO (EARS-CON-03)."""
+        with unidad_de_trabajo(self._engine, escritura=False) as s:
+            futuras = contar_futuras(s, e.telefono, ahora)
+        servicio = self._config.servicio(intencion.servicio_id or "")
+        if futuras >= self._config.negocio.max_citas_futuras_por_clienta:
+            return self._iniciar_agendar(e, ctx, ahora)
+        self._a_menu(ctx)
+        ctx.ir(Estado.ELIGIENDO_SERVICIO)
+        ctx.servicio_id = servicio.id
+        if self._config.negocio.domicilio.habilitado and servicio.domicilio_permitido:
+            ctx.ir(Estado.ELIGIENDO_MODALIDAD)
+            return [self._botones_modalidad()]
+        ctx.modalidad = "local"
+        ctx.ir(Estado.ELIGIENDO_DIA)
+        if intencion.fecha_tentativa is None:
+            return self._lista_dias(ctx, e, ahora)
+        ctx.fecha = intencion.fecha_tentativa.isoformat()
+        ctx.ir(Estado.ELIGIENDO_HORA)
+        return self._lista_horas(ctx, e, ahora, franja=intencion.franja)
 
     def _manejador(
         self, entrada: str
@@ -351,7 +425,13 @@ class Agente:
         return self._lista_horas(ctx, e, ahora)
 
     def _lista_horas(
-        self, ctx: Contexto, e: Entrante, ahora: datetime, *, previo: str | None = None
+        self,
+        ctx: Contexto,
+        e: Entrante,
+        ahora: datetime,
+        *,
+        previo: str | None = None,
+        franja: str | None = None,
     ) -> list[Saliente]:
         assert ctx.fecha is not None  # noqa: S101 - invariante del flujo
         servicio, modalidad = self._servicio_y_modalidad(ctx)
@@ -363,6 +443,10 @@ class Agente:
         if not horas:
             ctx.ir(Estado.ELIGIENDO_DIA)
             return [Saliente("texto", texto("hora_sin_horarios")), *self._lista_dias(ctx, e, ahora)]
+        if franja is not None:  # prefiere la franja pedida; si no hay, ofrece todas
+            horas = [
+                h for h in horas if h.astimezone(negocio.zona).hour in FRANJAS[franja]
+            ] or horas
         ctx.horas_ofrecidas = [h.isoformat() for h in horas]
         filas = [Opcion(f"hora:{h.isoformat()}", hora(h, negocio)) for h in horas]
         filas.append(Opcion("dia:otro", texto("otro_dia")))

@@ -478,7 +478,7 @@
   - Test: `pytest tests/unit/test_llm_gemini.py -q`
   - Hecho cuando: timeout, 429 y JSON inválido devuelven `None` sin propagar errores.
 
-- [ ] **TASK-38** · Orquestar palabras clave → LLM → fallback y medir el porcentaje sin LLM
+- [x] **TASK-38** · Orquestar palabras clave → LLM → fallback y medir el porcentaje sin LLM
   - Objetivo: orden determinista, umbral de confianza 0.7 y métricas.
   - Trazabilidad: US-01, US-10, EARS-INT-01, EARS-INT-04, EARS-INT-06, EARS-INT-07 · Plan: 9.4
   - Diseño: design.md §B7.4

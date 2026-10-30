@@ -23,6 +23,7 @@ from app.config import ConfiguracionInvalida, leer_yaml
 from app.mensajes import Mensajes
 
 DIRECTORIO_CONFIG = Path(__file__).resolve().parents[1] / "config"
+UMBRAL_CONFIANZA = 0.7
 INTENCIONES_VALIDAS = frozenset(
     {
         "agendar",
