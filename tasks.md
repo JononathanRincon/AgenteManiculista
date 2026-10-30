@@ -90,7 +90,7 @@
   - Test: `pytest tests/unit/test_settings.py -q`
   - Hecho cuando: `.env.example` no contiene valores reales y toda variable requerida está comentada.
 
-- [ ] **TASK-07** · Crear modelos ORM y engine SQLite con WAL y `BEGIN IMMEDIATE`
+- [x] **TASK-07** · Crear modelos ORM y engine SQLite con WAL y `BEGIN IMMEDIATE`
   - Objetivo: tablas de design.md §2 y escritura serializada.
   - Trazabilidad: NFR-INT-01, EARS-COL-01 · Plan: 3.3
   - Diseño: design.md §1.3, §2, §B1.4
