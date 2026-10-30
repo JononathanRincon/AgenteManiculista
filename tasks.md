@@ -613,7 +613,7 @@
   - Test: `pytest tests/unit/test_acumulador.py -q`
   - Hecho cuando: tres mensajes en la ventana producen una sola invocación con los textos unidos por salto de línea.
 
-- [ ] **TASK-67** · Implementar la pausa por intervención humana y el rate limit
+- [x] **TASK-67** · Implementar la pausa por intervención humana y el rate limit
   - Objetivo: pausar el bot 2 h ante un `fromMe` ajeno y limitar las respuestas por teléfono y globales.
   - Trazabilidad: US-14, EARS-WA-15, 17, 18, EC-22 · Plan: 10.6
   - Diseño: design.md §B8.2, §B8.4
