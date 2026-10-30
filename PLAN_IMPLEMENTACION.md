@@ -69,86 +69,86 @@
 
 ### Fase 3 — Modelos y configuración (Bloque 1)
 *Skills:* `incremental-implementation`, `test-driven-development`, `source-driven-development`
-- [ ] **3.1** Carga y validación de YAML (negocio, servicios, domicilio)
-- [ ] **3.2** Settings de entorno y `.env.example`
-- [ ] **3.3** Modelos ORM, engine SQLite (WAL, `BEGIN IMMEDIATE`)
-- [ ] **3.4** Mensajes externalizados
-- [ ] **3.5** Revisión del bloque y cobertura medida
+- [x] **3.1** Carga y validación de YAML (negocio, servicios, domicilio)
+- [x] **3.2** Settings de entorno y `.env.example`
+- [x] **3.3** Modelos ORM, engine SQLite (WAL, `BEGIN IMMEDIATE`)
+- [x] **3.4** Mensajes externalizados
+- [x] **3.5** Revisión del bloque y cobertura medida
 
 ### Fase 4 — Disponibilidad (Bloque 2)
 *Skills:* `incremental-implementation`, `test-driven-development`, `api-and-interface-design`
-- [ ] **4.1** Cuadrícula y bloques ocupados
-- [ ] **4.2** Horarios ofrecibles
-- [ ] **4.3** Puerto `Calendario` y `CalendarioFalso`
-- [ ] **4.4** Revisión del bloque y cobertura medida
+- [x] **4.1** Cuadrícula y bloques ocupados
+- [x] **4.2** Horarios ofrecibles
+- [x] **4.3** Puerto `Calendario` y `CalendarioFalso`
+- [x] **4.4** Revisión del bloque y cobertura medida
 
 ### Fase 5 — Caché (Bloque 3)
 *Skills:* `incremental-implementation`, `test-driven-development`, `source-driven-development`
-- [ ] **5.1** Caché con TTL, métricas e invalidación
-- [ ] **5.2** Espejo de eventos con `syncToken`
-- [ ] **5.3** Revisión del bloque y cobertura medida
+- [x] **5.1** Caché con TTL, métricas e invalidación
+- [x] **5.2** Espejo de eventos con `syncToken`
+- [x] **5.3** Revisión del bloque y cobertura medida
 
 ### Fase 6 — Reservas, cola y worker (Bloque 4)
 *Skills:* `incremental-implementation`, `test-driven-development`, `security-and-hardening`, `debugging-and-error-recovery`
-- [ ] **6.1** Reserva transaccional con bloques UNIQUE
-- [ ] **6.2** Prueba de concurrencia (carrera)
-- [ ] **6.3** Cola, worker, verificación en vivo, backoff y pausa
-- [ ] **6.4** Expiración, cancelar y reagendar
-- [ ] **6.5** Consulta de citas y límite por clienta
-- [ ] **6.6** Revisión del bloque con `code-reviewer`, `security-auditor`, `test-engineer` en paralelo y cobertura medida
+- [x] **6.1** Reserva transaccional con bloques UNIQUE
+- [x] **6.2** Prueba de concurrencia (carrera)
+- [x] **6.3** Cola, worker, verificación en vivo, backoff y pausa
+- [x] **6.4** Expiración, cancelar y reagendar
+- [x] **6.5** Consulta de citas y límite por clienta
+- [x] **6.6** Revisión del bloque con `code-reviewer`, `security-auditor`, `test-engineer` en paralelo y cobertura medida
 
 ### Fase 7 — Máquina de estados (Bloque 5)
 *Skills:* `incremental-implementation`, `test-driven-development`
-- [ ] **7.1** Estados y transiciones persistidos
-- [ ] **7.2** Flujo de agendar con botones y listas
-- [ ] **7.3** Modalidad domicilio con recargo
-- [ ] **7.4** Reagendar y cancelar
-- [ ] **7.5** Palabras clave, FAQ, aviso de datos y deduplicación
-- [ ] **7.6** E2E de agendar sin LLM
-- [ ] **7.7** Revisión del bloque y cobertura medida
+- [x] **7.1** Estados y transiciones persistidos
+- [x] **7.2** Flujo de agendar con botones y listas
+- [x] **7.3** Modalidad domicilio con recargo
+- [x] **7.4** Reagendar y cancelar
+- [x] **7.5** Palabras clave, FAQ, aviso de datos y deduplicación
+- [x] **7.6** E2E de agendar sin LLM
+- [x] **7.7** Revisión del bloque y cobertura medida
 
 ### Fase 8 — Simulador (Bloque 6)
 *Skills:* `frontend-ui-engineering`, `browser-testing-with-devtools`, `test-driven-development`
-- [ ] **8.1** Transporte y calendario simulado
-- [ ] **8.2** API `/demo`
-- [ ] **8.3** Interfaz `/demo` vertical presentable
-- [ ] **8.4** Botón de carrera
-- [ ] **8.5** Configuración de despliegue de la demo (sin desplegar)
-- [ ] **8.6** Revisión del bloque
+- [x] **8.1** Transporte y calendario simulado
+- [x] **8.2** API `/demo`
+- [x] **8.3** Interfaz `/demo` vertical presentable
+- [x] **8.4** Botón de carrera
+- [x] **8.5** Configuración de despliegue de la demo (sin desplegar)
+- [x] **8.6** Revisión del bloque
 
 ### Fase 9 — Capa de intención (Bloque 7)
 *Skills:* `arquitecto-de-prompts`, `source-driven-development`, `security-and-hardening`, `test-driven-development`
-- [ ] **9.1** Esquema Pydantic de intención
-- [ ] **9.2** Puerto `ProveedorLLM` y proveedor `none`
-- [ ] **9.3** Adaptador Gemini
-- [ ] **9.4** Orquestador palabras clave → LLM → fallback con métrica
-- [ ] **9.5** Test de privacidad del prompt
-- [ ] **9.6** Evals
-- [ ] **9.7** Revisión del bloque
+- [x] **9.1** Esquema Pydantic de intención
+- [x] **9.2** Puerto `ProveedorLLM` y proveedor `none`
+- [x] **9.3** Adaptador Gemini
+- [x] **9.4** Orquestador palabras clave → LLM → fallback con métrica
+- [x] **9.5** Test de privacidad del prompt
+- [x] **9.6** Evals
+- [x] **9.7** Revisión del bloque
 
 ### Fase 10 — Integración WhatsApp y observabilidad (Bloque 8)
 *Skills:* `source-driven-development`, `security-and-hardening`, `observability-and-instrumentation`
-- [ ] **10.1** Verificación GET y firma HMAC
-- [ ] **10.2** POST con 200 inmediato, background y deduplicación
-- [ ] **10.3** Cliente Graph con reintentos
-- [ ] **10.4** `/health` y logging JSON enmascarado
-- [ ] **10.5** Revisión del bloque
+- [x] **10.1** Verificación GET y firma HMAC
+- [x] **10.2** POST con 200 inmediato, background y deduplicación
+- [x] **10.3** Cliente Graph con reintentos
+- [x] **10.4** `/health` y logging JSON enmascarado
+- [x] **10.5** Revisión del bloque
 
 ### Fase 11 — Calendar real y push (Bloque 9)
 *Skills:* `source-driven-development`, `security-and-hardening`, `test-driven-development`
-- [ ] **11.1** Adaptador Google Calendar
-- [ ] **11.2** `events.watch`, `/webhook/calendar` y renovación
-- [ ] **11.3** Modo degradado
-- [ ] **11.4** Revisión del bloque
+- [x] **11.1** Adaptador Google Calendar
+- [x] **11.2** `events.watch`, `/webhook/calendar` y renovación
+- [x] **11.3** Modo degradado
+- [x] **11.4** Revisión del bloque
 
 ### Fase 12 — Documentación (Bloque 10)
 *Skills:* `documentation-and-adrs`
-- [ ] **12.1** README técnico con diagrama Mermaid
-- [ ] **12.2** Manual para la clienta
-- [ ] **12.3** Runbook y CHANGELOG
+- [x] **12.1** README técnico con diagrama Mermaid
+- [x] **12.2** Manual para la clienta
+- [x] **12.3** Runbook y CHANGELOG
 
 ### Fase 13 — Lanzamiento
 *Skills:* `shipping-and-launch`, `ci-cd-and-automation`, `observability-and-instrumentation`
-- [ ] **13.1** `/agent-skills:ship` con decisión go/no-go
-- [ ] **13.2** Despliegue de la demo en Render (con confirmación del usuario)
-- [ ] **13.3** Release `vX.Y.Z` a `main` con confirmación del usuario
+- [x] **13.1** `/agent-skills:ship` con decisión go/no-go
+- [x] **13.2** Despliegue de la demo en Render (con confirmación del usuario)
+- [x] **13.3** Release `vX.Y.Z` a `main` con confirmación del usuario

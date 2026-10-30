@@ -110,7 +110,7 @@
   - Test: `pytest tests/unit/test_mensajes.py -q`
   - Hecho cuando: falta una clave requerida y el arranque falla; un test detecta strings visibles hardcodeados en `app/`.
 
-- [ ] **TASK-52** · Revisión del Bloque 1 y cobertura medida
+- [x] **TASK-52** · Revisión del Bloque 1 y cobertura medida
   - Objetivo: cerrar el bloque con revisión y cobertura de ramas medida.
   - Trazabilidad: NFR-CAL-01 · Plan: 3.5
   - Diseño: design.md §B1.5

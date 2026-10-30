@@ -665,3 +665,23 @@
 - **Intentos del bucle interno:** 1/3
 - **Estado actualizado:** tasks.md TASK-04 `[x]` · FASE_TRACKING Fase 2 `✅`, Fase 3 `⏳`
 - **Pendientes o riesgos:** El workflow aún no se ejecutó (no hay remoto en GitHub, PA-09). `gitleaks-action` puede requerir licencia en organizaciones de GitHub (gratis en cuentas personales): verificar al elegir el remoto. Trivy y SBOM quedan para la primera ejecución del pipeline. Bloque 0 sin revisión de código dedicada (no hay lógica de dominio); la revisión formal comienza en el Bloque 1.
+
+## Entrada 12 — 2026-10-30 — Bloque 1 completo: TASK-05, 06, 07, 08 y 52 (Fase 3)
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code
+- **Fase / tarea:** Fase 3 — Modelos y configuración · TASK-05 a TASK-08 y TASK-52
+- **Prompt utilizado (literal):**
+  ```text
+  hagas todos los bloques de una vez, avisame cuando termines
+  ```
+  (El usuario autorizó ejecutar todos los bloques seguidos sin pausas intermedias; se mantiene rama, gate, commit y merge por tarea. Push, despliegue en Render y release a main siguen requiriendo confirmación.)
+- **Output del agente (resumen):** `app/config.py` (modelos Pydantic estrictos e inmutables, `cargar_config`, `ConfiguracionInvalida`, `Settings`), `config/negocio.yaml`, `config/servicios.yaml`, `app/modelos.py` (ORM de design.md §2, `FechaUTC`, `crear_engine` con WAL/busy_timeout/foreign_keys/synchronous, `unidad_de_trabajo` con BEGIN IMMEDIATE solo en escrituras), `app/mensajes.py` y `config/mensajes.yaml` (claves requeridas, plantillas validadas).
+- **Archivos:** app/config.py, app/modelos.py, app/mensajes.py, config/*.yaml, tests/unit/test_config.py, test_settings.py, test_mensajes.py, tests/integration/test_modelos.py, `.env.example` sin cambios (la prueba verifica que coincide con `Settings`).
+- **Documentación oficial consultada (source-driven):** SQLAlchemy 2.0, dialecto SQLite/pysqlite: receta `isolation_level=None` en el evento `connect` y `BEGIN` emitido en el evento `begin` (aquí `BEGIN IMMEDIATE` vía opción de ejecución `inmediata`); la página solo documenta `BEGIN`, la variante IMMEDIATE se verificó con la prueba de bloqueo.
+- **Dependencias agregadas:** `tzdata` 2026.6 (paquete oficial de la PSF, github.com/python/tzdata; verificado en PyPI). Justificación: Windows y la imagen `python:3.12-slim` no traen base de zonas horarias y se necesita `America/Bogota`.
+- **Patrones:** configuración inmutable validada al arrancar; Unit of Work; TypeDecorator para fechas UTC.
+- **Reporte de pruebas:** 44 pasaron, 0 fallaron. Cobertura de ramas medida 99,15 % (config 98 %, mensajes 100 %, modelos 100 %).
+- **Hallazgos de la revisión (TASK-52, autorrevisión de 5 ejes):** sin críticos ni altos. Observación media: `unidad_de_trabajo` hace commit aunque la escritura no se haya emitido (inofensivo). Observación baja: `Settings.gemini_model` trae un valor por defecto que se debe verificar en la documentación oficial en TASK-37.
+- **Intentos del bucle interno:** TASK-07 2/3 (la transacción de SQLite empieza con el primer SQL, no con `add`; se corrigió la prueba con `flush`); resto 1/3.
+- **Estado actualizado:** tasks.md TASK-05 a 08 y 52 `[x]`; FASE_TRACKING Fase 3 `✅`.
+- **Pendientes:** el shell del entorno falla con heredocs que contienen comillas; los archivos se escriben con la herramienta Write.
