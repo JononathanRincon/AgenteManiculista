@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import time
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
@@ -200,6 +200,7 @@ class Settings(BaseSettings):
     google_service_account_json: SecretStr | None = None
     calendar_webhook_url: str | None = None
     calendar_channel_token: SecretStr | None = None
+    demo_retardo_calendario_s: Annotated[float, Field(ge=0, le=5)] = 0.0
 
     @model_validator(mode="after")
     def _gemini_requiere_clave(self) -> Self:
