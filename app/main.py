@@ -14,16 +14,18 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import Engine
 
 from app.admin import crear_router_admin
+from app.canal import mantener
 from app.config import Config, Settings, cargar_config
 from app.limite_tasa import LimiteTasa
 from app.logs import configurar_logging, nuevo_correlation_id
 from app.mensajes import cargar_mensajes, configurar
 from app.modelos import crear_engine, crear_tablas
+from app.produccion import Produccion, construir_produccion
 from app.puertos import Reloj
 from app.salud import construir_salud
 from app.simulador.demo import Demo
 from app.simulador.rutas import ESTATICOS, crear_router
-from app.webhook import Pasarela, crear_router_whatsapp
+from app.webhook import Pasarela, crear_router_calendar, crear_router_whatsapp
 from app.whatsapp import ClienteSidecar
 
 DIRECTORIO_CONFIG = Path(__file__).resolve().parents[1] / "config"
@@ -103,11 +105,48 @@ def _arrancar_simulador(
     ]
 
 
+def _montar_webhooks_y_admin(app: FastAPI, ajustes: Settings) -> None:
+    """Rutas que existen solo si su secreto está configurado."""
+    app.state.alinear_calendario = lambda: None
+    if ajustes.webhook_secret is not None:
+        app.state.webhook_secreto = ajustes.webhook_secret.get_secret_value()
+        app.include_router(crear_router_whatsapp())
+    if ajustes.calendar_channel_token is not None:
+        app.state.calendar_channel_token = ajustes.calendar_channel_token.get_secret_value()
+        app.state.limite_calendar = LimiteTasa(maximo=30, ventana_s=60)
+        app.include_router(crear_router_calendar())
+    if ajustes.admin_token is not None:
+        app.state.admin_token = ajustes.admin_token.get_secret_value()
+        app.state.limite_admin = LimiteTasa(maximo=30, ventana_s=60)  # frena la fuerza bruta
+        if ajustes.sidecar_url and ajustes.sidecar_token:
+            app.state.sidecar = ClienteSidecar(
+                ajustes.sidecar_url, ajustes.sidecar_token.get_secret_value()
+            )
+        app.include_router(crear_router_admin())
+
+
+def _arrancar_produccion(
+    app: FastAPI, prod: Produccion, parar: asyncio.Event
+) -> list[asyncio.Task[None]]:
+    """Worker, limpieza y mantenimiento del canal push; la pasarela atiende el webhook."""
+    app.state.pasarela = prod.pasarela
+    app.state.alinear_calendario = prod.alinear_calendario
+    return [
+        asyncio.create_task(prod.worker.correr(parar)),
+        asyncio.create_task(prod.worker.correr_limpieza(parar)),
+        asyncio.create_task(mantener(prod.gestor_canal, prod.cache, prod.calendario_id, parar)),
+    ]
+
+
+FabricaProduccion = Callable[[Settings, Config, Engine, Reloj | None], Produccion]
+
+
 def crear_app(
     settings: Settings | None = None,
     config: Config | None = None,
     reloj: Reloj | None = None,
     fabrica_pasarela: Callable[[Engine], Pasarela] | None = None,
+    fabrica_produccion: FabricaProduccion = construir_produccion,
 ) -> FastAPI:
     """Construye la aplicación; las rutas de /demo solo existen con SIMULADOR=true."""
     ajustes = settings or Settings()
@@ -124,9 +163,12 @@ def crear_app(
         if fabrica_pasarela is not None:
             app.state.pasarela = fabrica_pasarela(engine)
         parar = asyncio.Event()
-        tareas = (
-            _arrancar_simulador(app, ajustes, negocio, reloj, parar) if ajustes.simulador else []
-        )
+        tareas: list[asyncio.Task[None]] = []
+        if ajustes.simulador:
+            tareas = _arrancar_simulador(app, ajustes, negocio, reloj, parar)
+        elif ajustes.entorno == "produccion":
+            prod = fabrica_produccion(ajustes, negocio, engine, reloj)
+            tareas = _arrancar_produccion(app, prod, parar)
         try:
             yield
         finally:
@@ -147,17 +189,7 @@ def crear_app(
     app.state.settings = ajustes
     app.state.config = negocio
     _montar_base(app, negocio)
-    if ajustes.webhook_secret is not None:
-        app.state.webhook_secreto = ajustes.webhook_secret.get_secret_value()
-        app.include_router(crear_router_whatsapp())
-    if ajustes.admin_token is not None:
-        app.state.admin_token = ajustes.admin_token.get_secret_value()
-        app.state.limite_admin = LimiteTasa(maximo=30, ventana_s=60)  # frena la fuerza bruta
-        if ajustes.sidecar_url and ajustes.sidecar_token:
-            app.state.sidecar = ClienteSidecar(
-                ajustes.sidecar_url, ajustes.sidecar_token.get_secret_value()
-            )
-        app.include_router(crear_router_admin())
+    _montar_webhooks_y_admin(app, ajustes)
     if ajustes.simulador:
         _montar_demo(app)
     return app
