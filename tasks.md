@@ -27,7 +27,7 @@
 ## Bloque 0 — Infraestructura (Fase 2)
 *Skills:* `git-workflow-and-versioning`, `ci-cd-and-automation`
 
-- [ ] **TASK-01** · Inicializar repositorio con GitFlow y estructura de carpetas
+- [x] **TASK-01** · Inicializar repositorio con GitFlow y estructura de carpetas
   - Objetivo: repositorio con `main` y `develop`, trabajo en `develop`, estructura de TDD §2.
   - Trazabilidad: NFR-SEG-02, NFR-DES-01 · Plan: 2.1
   - Diseño: design.md §0, §1.1

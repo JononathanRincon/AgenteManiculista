@@ -490,3 +490,46 @@
 - **Intentos del bucle interno:** N/A
 - **Estado actualizado:** FASE_TRACKING: Fase 0 `[x] ✅`; Fase 1 `⏳` (falta 1.7 revisión del usuario).
 - **Pendientes o riesgos:** Revisión del usuario de los derivados; versiones de librerías y APIs se verifican por tarea.
+
+## Entrada 8 — 2026-10-30 — Aprobación de derivados y TASK-01
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code
+- **Fase / tarea:** Fase 1.7 (cierre) y Fase 2 — Infraestructura · TASK-01
+- **Prompt utilizado (literal):**
+  ```text
+  Apruebo derivados
+  ```
+- **Output del agente (mensaje final):**
+  ```text
+  Fase 1 cerrada. Repositorio inicializado con main y develop, .gitignore que bloquea secretos y bases locales,
+  estructura de carpetas y primer commit con los documentos del harness. Trabajo continúa en develop.
+  ```
+- **Archivos creados o modificados:**
+  | Archivo | Líneas | Cambio |
+  |---|---|---|
+  | `.gitignore` | 1-fin | Creado (bloquea `.env*`, `*.pem`, `*.key`, `*.db`, service-account) |
+  | `app/ config/ tests/{unit,integration,e2e,evals}/ docs/adr/` | — | Carpetas con `.gitkeep` |
+  | `FASE_TRACKING.md`, `PLAN_IMPLEMENTACION.md`, `tasks.md` | marcadores | 1.7 y TASK-01 a `[x]`; Fase 1 ✅; Fase 2 ⏳ |
+- **Patrones y principios aplicados:** GitFlow; secretos fuera del repositorio.
+- **Comandos de terminal ejecutados:**
+  ```bash
+  git init -b main                       # repositorio creado
+  git commit (initial)                   # 19d0692 en main
+  git branch develop; git checkout develop
+  git branch --list main develop         # main y develop presentes
+  ```
+- **Acciones de Git:**
+  - Rama: commit inicial directo en `main` (único caso: el repositorio aún no tenía `develop`); luego `develop` desde `main`.
+  - Commits: `19d0692 chore: documentos del harness y estructura inicial`
+  - Merge: no aplica
+- **Dependencias agregadas:** Ninguna
+- **Reporte de pruebas:**
+  | Suite / nivel | Total | ✅ Pasaron | ❌ Fallaron | Cobertura ramas (medida) |
+  |---|---|---|---|---|
+  | Test de la tarea (`git branch --list main develop`) | 1 | 1 | 0 | no aplica |
+- **Casos ejecutados:**
+  - [x] `git branch --list main develop`: ambas ramas existen (NFR-SEG-02, NFR-DES-01)
+  - [x] `git status --short` sin secretos staged
+- **Intentos del bucle interno:** 1/3
+- **Estado actualizado:** tasks.md TASK-01 `[x]` · FASE_TRACKING Fase 1 `✅`, Fase 2 `⏳`
+- **Pendientes o riesgos:** Python local es 3.14.2 y el proyecto exige 3.12: TASK-02 debe resolverlo (verificar el lanzador `py -3.12` o usar Docker). Los commits y merges de las tareas siguientes llevan la línea Co-Authored-By.
