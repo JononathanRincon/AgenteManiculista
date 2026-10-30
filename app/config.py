@@ -19,6 +19,7 @@ from pydantic import (
 )
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+Modalidad = Literal["local", "domicilio"]
 DIAS = ("lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo")
 
 
