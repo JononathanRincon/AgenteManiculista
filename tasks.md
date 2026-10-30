@@ -229,7 +229,7 @@
   - Test: `pytest tests/integration/test_cola.py -q`
   - Hecho cuando: dos reclamos simultáneos nunca devuelven el mismo trabajo y la clave duplicada se rechaza.
 
-- [ ] **TASK-17** · Implementar el worker con verificación en vivo y creación del evento
+- [x] **TASK-17** · Implementar el worker con verificación en vivo y creación del evento
   - Objetivo: un worker por calendario; falla definitiva si hay ocupación; 409 = éxito.
   - Trazabilidad: US-07, EARS-COL-05, EARS-COL-06, EARS-RES-04, EARS-CAL-01, EARS-CAL-02 · Plan: 6.3
   - Diseño: design.md §B4.4

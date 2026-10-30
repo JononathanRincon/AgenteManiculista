@@ -10,7 +10,7 @@ import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -150,3 +150,54 @@ def reservar(
         ahora=ahora,
     )
     return reserva
+
+
+def cargar(sesion: Session, reserva_id: int) -> Reserva:
+    """Carga una reserva por id; ReservaNoEncontrada si no existe."""
+    reserva = sesion.get(Reserva, reserva_id)
+    if reserva is None:
+        raise ReservaNoEncontrada(str(reserva_id))
+    return reserva
+
+
+def confirmar(sesion: Session, reserva: Reserva, event_id: str, ahora: datetime) -> None:
+    """PENDIENTE -> CONFIRMADA con el id del evento creado."""
+    reserva.estado = "CONFIRMADA"
+    reserva.event_id = event_id
+    reserva.expira_en = None
+    reserva.actualizado_en = ahora
+
+
+def liberar(sesion: Session, reserva: Reserva, estado_final: str, ahora: datetime) -> None:
+    """Pasa a un estado final (CANCELADA, EXPIRADA, FALLIDA) y libera todos sus bloques."""
+    sesion.execute(delete(ReservaBloque).where(ReservaBloque.reserva_id == reserva.id))
+    reserva.estado = estado_final
+    reserva.expira_en = None
+    reserva.actualizado_en = ahora
+
+
+def completar_reagendar(
+    sesion: Session, nueva: Reserva, vieja: Reserva, event_id: str, ahora: datetime
+) -> None:
+    """Reagendar exitoso: la vieja se cancela y libera lo que le quedaba; la nueva se confirma."""
+    liberar(sesion, vieja, "CANCELADA", ahora)
+    confirmar(sesion, nueva, event_id, ahora)
+
+
+def revertir_reagendar(
+    sesion: Session, nueva: Reserva, vieja: Reserva, config: Config, ahora: datetime
+) -> None:
+    """Reagendar fallido: los bloques que eran de la vieja vuelven a ella y la nueva se libera."""
+    negocio = config.negocio
+    servicio = config.servicio(vieja.servicio_id)
+    originales = set(bloques_ocupados(vieja.inicio, servicio, vieja.modalidad, negocio))  # type: ignore[arg-type]
+    sesion.execute(
+        update(ReservaBloque)
+        .where(
+            ReservaBloque.reserva_id == nueva.id,
+            ReservaBloque.calendario_id == nueva.calendario_id,
+            ReservaBloque.bloque_inicio.in_(originales),
+        )
+        .values(reserva_id=vieja.id)
+    )
+    liberar(sesion, nueva, "FALLIDA", ahora)
