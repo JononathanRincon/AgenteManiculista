@@ -57,8 +57,10 @@ depende de puertos.
 | `calendario.py` | Adaptador Google Calendar v3 (service account) | Adapter del puerto `Calendario` |
 | `conversacion.py` | Máquina de estados; único módulo que decide transiciones | State |
 | `intencion.py`, `llm/` | Palabras clave → LLM → validación → fallback | Strategy (`ProveedorLLM`), Chain |
-| `whatsapp.py` | Cliente Graph API (texto, botones, listas) con reintentos | Adapter del puerto `Mensajeria` |
-| `webhook.py` | GET verificación, POST con firma, dedup, background | Entrypoint |
+| `whatsapp.py` | `MensajeriaBaileys`: humanización, menús numerados, rate limit; habla con el sidecar (v0.4, ADR-009) | Adapter del puerto `Mensajeria` |
+| `acumulador.py` | Debounce por teléfono | Buffer asíncrono |
+| `sidecar/` | Servicio Node.js con Baileys (sesión, QR, leer/presencia/enviar) | Sidecar en su propio contenedor |
+| `webhook.py` | POST del sidecar con firma HMAC, filtro de chats, dedup, background | Entrypoint |
 | `simulador/` | Transporte web, calendario simulado en memoria, UI `/demo` | Adapter de `Mensajeria` y `Calendario` |
 
 ### Recorrido de una confirmación
@@ -107,7 +109,7 @@ propios en JSON `{codigo, mensaje}`. Sin paginación (sin listados públicos). I
 
 ## 6. Seguridad técnica
 - Firma HMAC SHA-256 con comparación en tiempo constante (`hmac.compare_digest`) sobre el cuerpo crudo.
-- Sin autenticación de usuario: la identidad de la clienta es el teléfono entregado por Meta ya firmado.
+- Sin autenticación de usuario: la identidad de la clienta es el teléfono entregado por el sidecar en un webhook firmado (HMAC).
 - Token de canal en `/webhook/calendar`; `/demo/*` solo existe con `SIMULADOR=true`.
 - Secretos solo por entorno; la service account se entrega como JSON en variable o ruta a archivo montado.
 - Cabeceras de seguridad básicas y límite de tasa por IP en los endpoints públicos.

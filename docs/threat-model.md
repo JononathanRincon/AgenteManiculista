@@ -6,7 +6,7 @@
 Datos personales de clientas (teléfono, nombre de perfil, dirección de domicilio), calendario de la dueña, integridad de la agenda (sin citas dobles), secretos (token de WhatsApp, app secret, service account, API key de Gemini).
 
 ## Fronteras de confianza
-1. Internet → `/webhook` (Meta) y `/webhook/calendar` (Google): origen verificado por firma y token de canal.
+1. Sidecar → `/webhook/whatsapp` (v0.4, red interna, HMAC) e Internet → `/webhook/calendar` (Google): origen verificado por firma y token de canal.
 2. Aplicación → LLM (tercero): solo texto, catálogo, fecha y nombre de estado.
 3. Aplicación → Google Calendar y Graph API: credenciales por entorno.
 4. `/demo/*`: solo existe en modo simulador.
@@ -14,7 +14,9 @@ Datos personales de clientas (teléfono, nombre de perfil, dirección de domicil
 ## Amenazas y mitigaciones
 | # | Flujo / activo | Amenaza | STRIDE | Mitigación | Requisito | Prueba |
 |---|---|---|---|---|---|---|
-| T1 | `POST /webhook` | Petición falsa que simula a Meta | Spoofing | HMAC SHA-256 sobre cuerpo crudo, `hmac.compare_digest`, 403 | EARS-WA-02 | TASK-41 |
+| T1 | `POST /webhook/whatsapp` | Petición falsa que simula al sidecar | Spoofing | HMAC SHA-256 sobre cuerpo crudo, `hmac.compare_digest`, 403 | EARS-WA-02 | TASK-68 |
+| T15 | Sesión de Baileys | Robo de `/data/baileys_auth` = control de la línea | Information disclosure / Elevation | Volumen restringido y no versionado, QR con token, rotación | EARS-WA-11, -14 | TASK-70, 71 |
+| T16 | Línea de WhatsApp | Bloqueo por detección de automatización | DoS | Humanización, solo tráfico entrante, debounce, handoff, rate limit | EARS-WA-06..18 | TASK-64..67 |
 | T2 | Mensajes | Reenvío del mismo mensaje | Tampering | Dedup por `wa_message_id`; clave de idempotencia; `id` de evento derivado | EARS-WA-04, EARS-COL-02 | TASK-42, 14 |
 | T3 | Reserva | Cita doble por carrera | Tampering | UNIQUE por bloque + `BEGIN IMMEDIATE` + worker único + verificación en vivo | EARS-RES-01, EARS-COL-05 | TASK-15 |
 | T4 | Reagendar/cancelar | Suplantar a otra clienta | Spoofing / Elevation | Identidad = teléfono firmado por Meta; consultas filtradas por teléfono | EARS-RES-09 | TASK-22 |

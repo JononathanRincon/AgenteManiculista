@@ -109,46 +109,49 @@
 
 ### Fase 8 — Simulador (Bloque 6)
 *Skills:* `frontend-ui-engineering`, `browser-testing-with-devtools`, `test-driven-development`
-- [x] **8.1** Transporte y calendario simulado
-- [x] **8.2** API `/demo`
-- [x] **8.3** Interfaz `/demo` vertical presentable
-- [x] **8.4** Botón de carrera
-- [x] **8.5** Configuración de despliegue de la demo (sin desplegar)
-- [x] **8.6** Revisión del bloque
+- [ ] **8.1** Transporte y calendario simulado
+- [ ] **8.2** API `/demo`
+- [ ] **8.3** Interfaz `/demo` vertical presentable
+- [ ] **8.4** Botón de carrera
+- [ ] **8.5** Configuración de despliegue de la demo (sin desplegar)
+- [ ] **8.6** Revisión del bloque
 
 ### Fase 9 — Capa de intención (Bloque 7)
 *Skills:* `arquitecto-de-prompts`, `source-driven-development`, `security-and-hardening`, `test-driven-development`
-- [x] **9.1** Esquema Pydantic de intención
-- [x] **9.2** Puerto `ProveedorLLM` y proveedor `none`
-- [x] **9.3** Adaptador Gemini
-- [x] **9.4** Orquestador palabras clave → LLM → fallback con métrica
-- [x] **9.5** Test de privacidad del prompt
-- [x] **9.6** Evals
-- [x] **9.7** Revisión del bloque
+- [ ] **9.1** Esquema Pydantic de intención
+- [ ] **9.2** Puerto `ProveedorLLM` y proveedor `none`
+- [ ] **9.3** Adaptador Gemini
+- [ ] **9.4** Orquestador palabras clave → LLM → fallback con métrica
+- [ ] **9.5** Test de privacidad del prompt
+- [ ] **9.6** Evals
+- [ ] **9.7** Revisión del bloque
 
-### Fase 10 — Integración WhatsApp y observabilidad (Bloque 8)
+### Fase 10 — Integración WhatsApp (Baileys, v0.4) y observabilidad (Bloque 8)
 *Skills:* `source-driven-development`, `security-and-hardening`, `observability-and-instrumentation`
-- [x] **10.1** Verificación GET y firma HMAC
-- [x] **10.2** POST con 200 inmediato, background y deduplicación
-- [x] **10.3** Cliente Graph con reintentos
-- [x] **10.4** `/health` y logging JSON enmascarado
-- [x] **10.5** Revisión del bloque
+- [ ] **10.1** Verificación GET y firma HMAC
+- [ ] **10.2** POST con 200 inmediato, background y deduplicación
+- [ ] **10.3** Cliente Graph con reintentos
+- [ ] **10.4** `/health` y logging JSON enmascarado
+- [ ] **10.5** Revisión del bloque
+- [ ] **10.6** (v0.4, ADR-009) Transporte Baileys en Python: humanización, menús numerados, debounce, handoff humano, rate limit, webhook del sidecar y adaptador
+- [ ] **10.7** (v0.4, ADR-009) Sidecar Node.js con Baileys y su contenedor
+- [ ] **10.8** (v0.4, ADR-009) Revisión del Bloque 8 con Baileys
 
 ### Fase 11 — Calendar real y push (Bloque 9)
 *Skills:* `source-driven-development`, `security-and-hardening`, `test-driven-development`
-- [x] **11.1** Adaptador Google Calendar
-- [x] **11.2** `events.watch`, `/webhook/calendar` y renovación
-- [x] **11.3** Modo degradado
-- [x] **11.4** Revisión del bloque
+- [ ] **11.1** Adaptador Google Calendar
+- [ ] **11.2** `events.watch`, `/webhook/calendar` y renovación
+- [ ] **11.3** Modo degradado
+- [ ] **11.4** Revisión del bloque
 
 ### Fase 12 — Documentación (Bloque 10)
 *Skills:* `documentation-and-adrs`
-- [x] **12.1** README técnico con diagrama Mermaid
-- [x] **12.2** Manual para la clienta
-- [x] **12.3** Runbook y CHANGELOG
+- [ ] **12.1** README técnico con diagrama Mermaid
+- [ ] **12.2** Manual para la clienta
+- [ ] **12.3** Runbook y CHANGELOG
 
 ### Fase 13 — Lanzamiento
 *Skills:* `shipping-and-launch`, `ci-cd-and-automation`, `observability-and-instrumentation`
-- [x] **13.1** `/agent-skills:ship` con decisión go/no-go
-- [x] **13.2** Despliegue de la demo en Render (con confirmación del usuario)
-- [x] **13.3** Release `vX.Y.Z` a `main` con confirmación del usuario
+- [ ] **13.1** `/agent-skills:ship` con decisión go/no-go
+- [ ] **13.2** Despliegue de la demo en Render (con confirmación del usuario)
+- [ ] **13.3** Release `vX.Y.Z` a `main` con confirmación del usuario

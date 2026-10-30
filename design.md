@@ -8,7 +8,7 @@
 > Prohibido escribir código sin haber leído antes la sección que cita la tarea.
 > Todo lo marcado ⚠️ se verifica en la documentación oficial **antes** de escribir el código que lo usa.
 
-Versión del SDD de origen: 0.3
+Versión del SDD de origen: 0.4 (ADR-009: transporte Baileys)
 
 ---
 
@@ -24,6 +24,7 @@ Versión del SDD de origen: 0.3
 | Áreas de trabajo autorizadas | `app/`, `config/`, `docs/` | Crear y editar código, YAML y documentación operativa. |
 | Dependencias | `pyproject.toml`, lockfile | Solo con justificación y verificación en PyPI en `AI_PROCESS.md`. |
 | Infraestructura | `Dockerfile`, `docker-compose.yml`, `render.yaml`, `.github/workflows/`, `Makefile`, `.gitignore`, `.env.example` | Solo en tareas de infraestructura explícitas. |
+| Sidecar (v0.4) | `sidecar/` (Node.js: `package.json`, lockfile, `src/`, `test/`, `Dockerfile`) | Crear y editar en las tareas del Bloque 8; dependencias npm solo con verificación en el registro y justificación en `AI_PROCESS.md`. |
 | Documentos de proyecto | `README.md` | Solo en las tareas de documentación (Bloque 10). |
 
 ---
@@ -81,7 +82,8 @@ CREATE TABLE conversaciones (
   estado TEXT NOT NULL,
   contexto TEXT NOT NULL DEFAULT '{}',          -- JSON: servicio_id, fecha, modalidad, direccion, hora, reserva_id
   aviso_datos_aceptado INTEGER NOT NULL DEFAULT 0,
-  actualizado_en TEXT NOT NULL
+  actualizado_en TEXT NOT NULL,
+  pausa_humana_hasta TEXT                       -- v0.4: handoff humano (ADR-009)
 );
 CREATE TABLE mensajes_procesados (
   wa_message_id TEXT PRIMARY KEY,
@@ -187,12 +189,13 @@ Verificación de firma sobre el cuerpo crudo antes de parsear JSON. Límite de t
 | Servicio | Imagen base | Puerto | Healthcheck | Depende de |
 |---|---|---|---|---|
 | `app` | `python:3.12-slim` (multi-stage, versión fijada) | 8000 | `GET /health` | volumen `/data` |
+| `sidecar` (v0.4) | `node:22-slim` (multi-stage, versión fijada, usuario no root) | 3000 (solo red interna) | `GET /estado` | volumen `/data/baileys_auth` |
 
 - Un contenedor, `uvicorn app.main:app --workers 1`; el arranque falla si detecta más de un worker configurado.
 - Usuario no root, `HEALTHCHECK`, `PYTHONDONTWRITEBYTECODE`, sin dependencias de desarrollo en runtime.
 - Volumen persistente para SQLite (`DATABASE_URL=sqlite:////data/agenda.db`).
 - `render.yaml`: servicio web Docker, una instancia, disco persistente, variables `SIMULADOR=true`, `PROVEEDOR_LLM=none`. ⚠️ Verificar planes y precios de Render antes del despliegue; el despliegue exige confirmación del usuario.
-- `.env.example` (sin valores): `ENTORNO`, `SIMULADOR`, `PROVEEDOR_LLM`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TIER`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `META_APP_SECRET`, `META_VERIFY_TOKEN`, `GOOGLE_SERVICE_ACCOUNT_JSON`, `CALENDAR_WEBHOOK_URL`, `CALENDAR_CHANNEL_TOKEN`, `DATABASE_URL`, `LOG_LEVEL`, cada una comentada con su origen.
+- `.env.example` (sin valores): `ENTORNO`, `SIMULADOR`, `PROVEEDOR_LLM`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_TIER`, `SIDECAR_URL`, `SIDECAR_TOKEN`, `WEBHOOK_SECRET`, `ADMIN_TOKEN` (v0.4; reemplazan a `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `META_APP_SECRET`, `META_VERIFY_TOKEN`), `GOOGLE_SERVICE_ACCOUNT_JSON`, `CALENDAR_WEBHOOK_URL`, `CALENDAR_CHANNEL_TOKEN`, `DATABASE_URL`, `LOG_LEVEL`, cada una comentada con su origen.
 
 ---
 
@@ -478,35 +481,80 @@ No aplica.
 
 ---
 
-## Bloque 8 — Integración WhatsApp y observabilidad (§B8)
+## Bloque 8 — Transporte WhatsApp (Baileys, anti-ban) y observabilidad (§B8)
 
-### §B8.1 Tablas
-`mensajes_procesados`, `metricas`.
+> v0.4 / ADR-009: reemplaza el adaptador de Graph API (TASK-41, 42, 43) por un sidecar Node.js con
+> `@whiskeysockets/baileys`. El dominio no cambia. La política anti-bloqueo vive en Python.
+
+### §B8.1 Tablas y configuración
+- `conversaciones.pausa_humana_hasta TEXT NULL` (handoff humano) — columna nueva.
+- Tabla `opciones_ofrecidas(telefono PK, opciones TEXT JSON [{id,titulo}], actualizado_en)`: último menú
+  numerado enviado a cada teléfono (mapea "1", "2" o el nombre al `id_interactivo`).
+- Tabla `envios_recientes(id PK, telefono, enviado_en)` para el rate limit por teléfono y global.
+- `config/negocio.yaml` (nuevo): `pausa_intervencion_humana_minutos: 120` y bloque `anti_ban`:
+```yaml
+pausa_intervencion_humana_minutos: 120
+anti_ban:
+  debounce_segundos: 4.5
+  lectura_min_ms: 1500
+  lectura_max_ms: 3000
+  escritura_ms_por_caracter: 45
+  escritura_min_ms: 2500
+  escritura_max_ms: 6000
+  jitter_min_ms: -400
+  jitter_max_ms: 600
+  max_mensajes_por_telefono: 15
+  ventana_limite_minutos: 10
+  max_mensajes_globales: 120
+```
+- Variables de entorno nuevas (reemplazan `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `META_APP_SECRET`,
+  `META_VERIFY_TOKEN`): `SIDECAR_URL`, `SIDECAR_TOKEN` (backend→sidecar), `WEBHOOK_SECRET` (HMAC del
+  sidecar→backend), `ADMIN_TOKEN` (QR). El sidecar lee `BACKEND_WEBHOOK_URL`, `WEBHOOK_SECRET`,
+  `SIDECAR_TOKEN`, `AUTH_DIR=/data/baileys_auth`.
 
 ### §B8.2 Contratos
 ```python
-class Mensajeria(Protocol):
-    def enviar_texto(self, telefono: str, texto: str) -> None
-    def enviar_botones(self, telefono: str, cuerpo: str, opciones: list[Opcion]) -> None   # <= 3
-    def enviar_lista(self, telefono: str, cuerpo: str, boton: str, filas: list[Opcion]) -> None  # <= 10
+class Dormir(Protocol):                       # inyectable; en pruebas y simulador no duerme
+    def __call__(self, segundos: float) -> None: ...
+@dataclass(frozen=True)
+class AntiBan: ...                            # modelo Pydantic en config.py (valores de negocio.yaml)
+def tiempo_lectura(cfg: AntiBan, azar: Callable[[], float]) -> float            # 1.5 a 3.0 s
+def tiempo_escritura(texto: str, cfg: AntiBan, azar: Callable[[], float]) -> float  # 45 ms/car, 2.5 a 6 s, ±jitter
+def degradar(salida: Saliente) -> tuple[str, list[Opcion]]                       # texto numerado + opciones
+def mapear_respuesta(texto: str, opciones: list[Opcion]) -> str | None           # "2" o nombre -> id
+class MensajeriaBaileys:                      # implementa Mensajeria
+    def enviar_texto / enviar_botones / enviar_lista                              # secuencia humanizada
+class Acumulador:                             # debounce por teléfono
+    async def recibir(self, entrante) -> None
+class ControlHumano:                          # handoff + rate limit
+    def pausar(self, telefono, ahora) -> None; def esta_pausado(...) -> bool; def puede_enviar(...) -> bool
 ```
-⚠️ Verificar en la documentación oficial de la WhatsApp Cloud API: forma del payload entrante (`entry[].changes[].value.messages[]`, `contacts[].profile.name`, `interactive.button_reply`/`list_reply`), forma de los mensajes salientes `interactive`, límites de longitud de títulos, filas y botones, y respuesta de error. No se escribe el adaptador sin haber leído esa documentación.
+Sidecar HTTP (token `SIDECAR_TOKEN` en `Authorization: Bearer`): `POST /leer {jid, key}`, `POST /presencia
+{jid, estado}`, `POST /enviar {jid, texto}` → `{id}`, `GET /estado`, `GET /qr` (token administrativo).
+Eventos sidecar→backend `POST /webhook/whatsapp` (cabecera `X-Firma: sha256=<hex>` sobre el cuerpo crudo):
+`{tipo: "mensaje", id, jid, telefono, nombre, texto, ts, tipoMensaje}`, `{tipo: "propio", id, jid}`
+(`fromMe` con id no emitido por el sidecar), `{tipo: "estado", conexion: "open|connecting|close|loggedOut"}`.
 
 ### §B8.3 Endpoints
 | # | Método | Ruta | Auth | Request | Respuestas | Requisitos |
 |---|---|---|---|---|---|---|
-| 1 | GET | `/webhook` | verify token | `hub.mode`, `hub.verify_token`, `hub.challenge` | 200 challenge · 403 | EARS-WA-01 |
-| 2 | POST | `/webhook` | `X-Hub-Signature-256` | payload de Meta | 200 siempre · 403 firma | EARS-WA-02..04 |
+| 1 | POST | `/webhook/whatsapp` | `X-Firma` HMAC-SHA256 | evento del sidecar | 200 siempre · 403 firma | EARS-WA-01..04, -15..17 |
+| 2 | GET | `/admin/whatsapp/qr` | `X-Admin-Token` | — | 200 QR/estado · 403 | EARS-WA-14 |
 | 3 | GET | `/health` | Pública sin PII | — | 200 JSON | EARS-OBS-01 |
 
 ### §B8.4 Reglas
-- POST: leer cuerpo crudo → verificar HMAC (`hmac.compare_digest`) → 403 si falla → `BackgroundTasks` → responder 200. El parseo y el envío ocurren en background; cualquier excepción se registra y nunca llega a Meta.
-- Envío con `httpx`, timeout 10 s, reintento exponencial en 429/5xx, hasta 3 intentos (EARS-WA-05).
-- `/health`: `cola_profundidad`, `cache_tasa_acierto`, `mensajes_sin_llm_pct`, `trabajos_fallidos`, `modo_degradado`, `canal_expira_en`, `cola_pausada_hasta`.
-- Logging JSON con `correlation_id`; `enmascarar(telefono)` → `***1234`; filtro que elimina tokens.
+- POST: leer cuerpo crudo → verificar HMAC (`hmac.compare_digest`) → 403 si falla → 200 inmediato → en background: filtrar JID (solo `@s.whatsapp.net`), deduplicar por `id`, ignorar si `pausa_humana_hasta > ahora`, acumular (debounce), `Agente.procesar` y enviar con la secuencia humanizada.
+- Evento `propio`: si el id no está entre los emitidos por el adaptador → `pausa_humana_hasta = ahora + pausa_intervencion_humana_minutos` (el sidecar solo informa los `fromMe` que no emitió).
+- Secuencia de envío por mensaje (un candado por teléfono para conservar el orden): espera de lectura (1,5–3 s) → `leer` → `composing` → espera de escritura → `paused` → `enviar`. Con `Dormir` nulo (pruebas, simulador) no espera.
+- Degradación: `botones` y `lista` → un solo texto: cuerpo + líneas "1️⃣ título" (+ descripción) + pie "Responde con el número o el nombre de la opción". Se guarda el menú en `opciones_ofrecidas`; un entrante de texto igual a un número válido o al nombre normalizado de una opción se convierte en `id_interactivo`; si no coincide, sigue como texto libre (palabras clave) y no se mapea. Más de 9 opciones usan dígitos "10" sin emoji.
+- Rate limit: antes de enviar, contar `envios_recientes` del teléfono en la ventana y el total global; si se excede, no se envía y se registra `rate_limit`.
+- Nunca se envía a un teléfono sin conversación previa entrante (`conversaciones` existente) ni dentro de la ventana de pausa humana.
+- Sidecar: `useMultiFileAuthState(AUTH_DIR)`, `fetchLatestBaileysVersion()`, `browser: Browsers.macOS('Desktop')`, `syncFullHistory: false`; reconexión 2·4·8·16·60 s + jitter salvo `loggedOut` (CRITICAL); QR desde `connection.update` (campo `qr`); sin lógica de negocio.
+- `/health` agrega `whatsapp_estado` y `whatsapp_ultimo_evento`; logging JSON con teléfono enmascarado.
+- ⚠️ Verificar en la documentación oficial de Baileys antes de escribir el sidecar: forma de `messages.upsert`, `readMessages`, `sendPresenceUpdate`, `DisconnectReason`, emisión del QR en la versión elegida.
 
 ### §B8.5 Pruebas
-`tests/integration/test_webhook.py`, `tests/unit/test_logging.py`, `tests/integration/test_whatsapp_cliente.py`. Casos: verificación GET ok/403; firma válida/ inválida/ ausente; 200 en < 1 s con procesamiento lento; mismo `id` dos veces → un solo efecto; reintento ante 429; teléfono enmascarado; `/health` sin PII. Comando: `pytest tests/integration/test_webhook.py tests/unit/test_logging.py tests/integration/test_whatsapp_cliente.py -q`.
+`tests/unit/test_humanizacion.py`, `test_menus_numericos.py`, `test_acumulador.py`, `test_control_humano.py`, `tests/integration/test_webhook_whatsapp.py`, `test_mensajeria_baileys.py`, `test_health.py`, `tests/unit/test_logging.py` y `sidecar/test/*.test.js` (`node --test`). Casos: tiempos dentro de rango con azar fijo; secuencia leer→composing→paused→enviar en ese orden; retardo 0 con `Dormir` nulo; menú numérico ida y vuelta; número fuera de rango; `CONFIRMANDO` inalcanzable por número sin hora ofrecida; debounce de 3 mensajes → 1 respuesta; handoff pausa 120 min y expira; rate limit; JIDs de grupo/difusión/canal ignorados; firma válida/inválida/ausente; dedup; ningún envío en frío; `loggedOut` en `/health`. Comando: `pytest tests/unit tests/integration -q -k "humaniz or numeric or acumul or humano or webhook or baileys or health or logging"` y `cd sidecar && node --test`.
 
 ---
 
