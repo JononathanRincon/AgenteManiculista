@@ -867,3 +867,15 @@
 - **Reporte de pruebas:** 808 pasadas, 0 fallidas. Cobertura de ramas medida: total 99 %; `calendario.py`, `canal.py`, `cache.py` y `webhook.py` al 100 %; `config.py` 99 % (línea 205) y `produccion.py` 97 % (un guardia de `_valor`), ninguno en los módulos críticos.
 - **Incidencias de proceso:** TASK-47 quedó implementada dentro de la rama de TASK-46 y se cerró en su propia rama con la prueba; las líneas de TASK-73 y TASK-74 se agregaron al final del bloque directamente en `develop` (commits de solo documentación), cuando el flujo pide pasar por una rama.
 - **Estado actualizado:** tasks.md TASK-45, 46, 47, 73, 74 y 60 `[x]`; Fase 11 `✅`; Fase 12 `⏳`.
+
+## Entrada 22 — 2026-10-30 — Bloque 10 completo y informe go/no-go (Fase 12; TASK-48, 49, 50 y 51 parcial)
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code.
+- **Fase / tarea:** Fase 12 — Documentación · TASK-48, TASK-49, TASK-50; Fase 13 · informe de TASK-51 (el go lo da el usuario).
+- **Prompt utilizado (literal):** "terminar todos los task's pendientes".
+- **Output del agente (resumen):** `README.md` (parte técnica con diagrama Mermaid, instalación, despliegue, Calendar, tabla de variables de `.env.example`, operación, privacidad y `GEMINI_TIER`, estimación de costo, riesgo Baileys, recordatorios como extensión futura, y parte "PARA LA CLIENTA"); `docs/manual-clienta.md`; `docs/runbook.md` (un procedimiento por cada alerta del log, sesión de WhatsApp, cola, cuota, canal push, respaldo y restauración, rotación de secretos, rollback); `CHANGELOG.md`; `docs/go-no-go.md`.
+- **Verificación de datos externos:** precios de `gemini-3.5-flash-lite` consultados en https://ai.google.dev/gemini-api/docs/pricing el 2026-10-30: paid US$ 0,30 por millón de tokens de entrada y US$ 2,50 de salida; el contenido del tier gratuito se usa para mejorar productos de Google y el del tier de pago no. La estimación para 300 conversaciones (≈ US$ 0,47 en el peor caso) parte de supuestos propios de tokens, **no medidos**. El precio del alojamiento no se verificó.
+- **Verificaciones del informe go/no-go:** ruff y mypy limpios; 808 pruebas y 99 % de cobertura de ramas (entrada 21); 40 pruebas del sidecar; `pip-audit` y `npm audit` sin vulnerabilidades; `docker compose --profile whatsapp build` correcto.
+- **Dependencias agregadas:** ninguna.
+- **Decisión:** el informe recomienda NO-GO a producción hasta cerrar PA-07, PA-09, PA-10, PA-15, hacer una prueba de humo con cuentas reales y confirmar la lectura de SDD v0.4. TASK-51, TASK-61 (Render) y TASK-62 (release) **no se marcan**: requieren la confirmación explícita del usuario.
+- **Estado actualizado:** tasks.md TASK-48, 49, 50 `[x]`; Fase 12 `✅`; Fase 13 `⏳` con TASK-51, 61 y 62 pendientes.

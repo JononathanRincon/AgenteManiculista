@@ -148,9 +148,9 @@
 
 ### Fase 12 — Documentación (Bloque 10)
 *Skills:* `documentation-and-adrs`
-- [ ] **12.1** README técnico con diagrama Mermaid
-- [ ] **12.2** Manual para la clienta
-- [ ] **12.3** Runbook y CHANGELOG
+- [x] **12.1** README técnico con diagrama Mermaid
+- [x] **12.2** Manual para la clienta
+- [x] **12.3** Runbook y CHANGELOG
 
 ### Fase 13 — Lanzamiento
 *Skills:* `shipping-and-launch`, `ci-cd-and-automation`, `observability-and-instrumentation`
