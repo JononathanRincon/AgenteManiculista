@@ -395,7 +395,7 @@
   - Test: `pytest tests/unit/test_transporte_simulado.py -q`
   - Hecho cuando: una conversación simulada invoca `conversacion.procesar` y el calendario emite el cambio.
 
-- [ ] **TASK-31** · Exponer las rutas `/demo` solo con `SIMULADOR=true`
+- [x] **TASK-31** · Exponer las rutas `/demo` solo con `SIMULADOR=true`
   - Objetivo: API de mensajes, calendario (SSE), carrera y reinicio.
   - Trazabilidad: US-12, EARS-SIM-01, EARS-SIM-05 · Plan: 8.2
   - Diseño: design.md §B6.3, §B6.4
