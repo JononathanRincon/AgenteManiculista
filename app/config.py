@@ -227,10 +227,10 @@ class Settings(BaseSettings):
     gemini_api_key: SecretStr | None = None
     gemini_model: str = "gemini-3.5-flash-lite"
     gemini_tier: Literal["free", "paid"] = "free"
-    whatsapp_token: SecretStr | None = None
-    whatsapp_phone_number_id: str | None = None
-    meta_app_secret: SecretStr | None = None
-    meta_verify_token: SecretStr | None = None
+    sidecar_url: str | None = None
+    sidecar_token: SecretStr | None = None
+    webhook_secret: SecretStr | None = None
+    admin_token: SecretStr | None = None
     google_service_account_json: SecretStr | None = None
     calendar_webhook_url: str | None = None
     calendar_channel_token: SecretStr | None = None
