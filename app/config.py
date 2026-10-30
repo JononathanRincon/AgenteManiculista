@@ -4,11 +4,20 @@ from __future__ import annotations
 
 from datetime import time
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 DIAS = ("lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo")
 
@@ -166,3 +175,33 @@ def cargar_config(directorio: Path) -> Config:
     if len(ids) != len(set(ids)):
         raise ConfiguracionInvalida("servicios.yaml: ids de servicio duplicados")
     return Config(negocio=negocio, servicios=servicios)
+
+
+class Settings(BaseSettings):
+    """Variables de entorno validadas; los valores por defecto son seguros (LLM apagado)."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_ignore_empty=True, extra="ignore", frozen=True
+    )
+
+    entorno: Literal["desarrollo", "demo", "produccion"] = "desarrollo"
+    simulador: bool = False
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
+    database_url: str = "sqlite:///./agenda.db"
+    proveedor_llm: Literal["gemini", "none"] = "none"
+    gemini_api_key: SecretStr | None = None
+    gemini_model: str = "gemini-2.5-flash-lite"
+    gemini_tier: Literal["free", "paid"] = "free"
+    whatsapp_token: SecretStr | None = None
+    whatsapp_phone_number_id: str | None = None
+    meta_app_secret: SecretStr | None = None
+    meta_verify_token: SecretStr | None = None
+    google_service_account_json: SecretStr | None = None
+    calendar_webhook_url: str | None = None
+    calendar_channel_token: SecretStr | None = None
+
+    @model_validator(mode="after")
+    def _gemini_requiere_clave(self) -> Self:
+        if self.proveedor_llm == "gemini" and self.gemini_api_key is None:
+            raise ValueError("GEMINI_API_KEY es obligatoria cuando PROVEEDOR_LLM=gemini")
+        return self
