@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import unicodedata
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -152,3 +153,49 @@ def validar_intencion(
         return Intencion.model_validate(crudo, context=contexto)
     except (ValidationError, ValueError, TypeError):
         return None
+
+
+# --- Prompt: solo texto, catálogo, fecha de hoy y nombre del estado (EARS-INT-02) ---
+RUTA_PROMPT = DIRECTORIO_CONFIG / "prompt_intencion.txt"
+MAX_TEXTO_LLM = 300
+DIAS_SEMANA = ("lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo")
+_NUMEROS = re.compile(r"\+?\d[\d\s().-]{5,}\d")
+_CORREOS = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+
+
+def redactar(texto: str) -> str:
+    """Quita teléfonos y correos que la clienta escriba dentro del mensaje y limita el largo."""
+    sin_correos = _CORREOS.sub("[correo]", texto)
+    sin_numeros = _NUMEROS.sub("[número]", sin_correos)
+    return " ".join(sin_numeros.split())[:MAX_TEXTO_LLM]
+
+
+def cargar_plantilla(ruta: Path = RUTA_PROMPT) -> str:
+    """Lee el prompt versionado sin sus líneas de comentario."""
+    try:
+        lineas = ruta.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise ConfiguracionInvalida(f"{ruta.name}: no se pudo leer") from exc
+    return "\n".join(linea for linea in lineas if not linea.startswith("#")).strip()
+
+
+def construir_prompt(
+    texto: str,
+    catalogo: Sequence[tuple[str, str]],
+    hoy: date,
+    estado: str,
+    plantilla: str | None = None,
+) -> str:
+    """Prompt para el LLM. La firma solo admite texto, catálogo (id, nombre), hoy y estado."""
+    base = plantilla if plantilla is not None else cargar_plantilla()
+    lista = "\n".join(f"- {identificador}: {nombre}" for identificador, nombre in catalogo)
+    relleno = {
+        "{{catalogo}}": lista,
+        "{{hoy}}": hoy.isoformat(),
+        "{{dia_semana}}": DIAS_SEMANA[hoy.weekday()],
+        "{{estado}}": estado,
+    }
+    for marca, valor in relleno.items():
+        base = base.replace(marca, valor)
+    # el texto de la clienta va al final para que no pueda introducir marcas de la plantilla
+    return base.replace("{{mensaje}}", redactar(texto))
