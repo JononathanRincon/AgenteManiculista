@@ -37,3 +37,4 @@ Thumbs.db
 # Herramientas locales de Claude
 .claude/settings.local.json
 graphify-out/
+requirements-ci.txt

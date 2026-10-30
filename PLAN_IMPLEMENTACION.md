@@ -62,10 +62,10 @@
 
 ### Fase 2 — Infraestructura base (Bloque 0)
 *Skills:* `ci-cd-and-automation`, `git-workflow-and-versioning`, `devsenpy`
-- [ ] **2.1** Repositorio con GitFlow (`main`, `develop`) y estructura de carpetas
-- [ ] **2.2** `pyproject.toml`, Makefile, ruff, mypy, pytest y cobertura
-- [ ] **2.3** Dockerfile y `docker-compose.yml` con healthcheck
-- [ ] **2.4** CI con lint, tipos, tests, cobertura, auditoría de dependencias y escaneo de secretos
+- [x] **2.1** Repositorio con GitFlow (`main`, `develop`) y estructura de carpetas
+- [x] **2.2** `pyproject.toml`, Makefile, ruff, mypy, pytest y cobertura
+- [x] **2.3** Dockerfile y `docker-compose.yml` con healthcheck
+- [x] **2.4** CI con lint, tipos, tests, cobertura, auditoría de dependencias y escaneo de secretos
 
 ### Fase 3 — Modelos y configuración (Bloque 1)
 *Skills:* `incremental-implementation`, `test-driven-development`, `source-driven-development`

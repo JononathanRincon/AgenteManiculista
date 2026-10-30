@@ -625,3 +625,43 @@
 - **Intentos del bucle interno:** 1/3
 - **Estado actualizado:** tasks.md TASK-03 `[x]`
 - **Pendientes o riesgos:** "Servicios healthy" del criterio de la tarea se verifica cuando exista `app/main.py` con `/health` (TASK-31/44); hoy el contenedor no arranca por falta de la app. `.env.example` se valida contra `Settings` en TASK-06. Trivy/SBOM quedan para el pipeline.
+
+## Entrada 11 — 2026-10-30 — TASK-04: CI y cierre del Bloque 0 (Fase 2)
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code
+- **Fase / tarea:** Fase 2 — Infraestructura · TASK-04
+- **Prompt utilizado (literal):**
+  ```text
+  Apruebo derivados   [continuación del loop: última tarea del Bloque 0]
+  ```
+- **Output del agente (mensaje final):**
+  ```text
+  Workflow de GitHub Actions (calidad, secretos con gitleaks, imagen con Trivy), versiones de acciones fijadas tras consultar sus tags,
+  target make ci (lint + test + pip-audit) y red de seguridad local de secretos en pytest. make ci pasa localmente. Bloque 0 cerrado.
+  ```
+- **Archivos creados o modificados:**
+  | Archivo | Líneas | Cambio |
+  |---|---|---|
+  | `.github/workflows/ci.yml` | todo | Creado |
+  | `tests/unit/test_sin_secretos.py` | todo | Creado: archivos de secretos y patrones conocidos en archivos versionados |
+  | `.gitignore` | 40 | `requirements-ci.txt` |
+  | `FASE_TRACKING.md`, `PLAN_IMPLEMENTACION.md`, `tasks.md` | marcadores | Fase 2 `✅`; Fase 3 `⏳`; TASK-04 `[x]` |
+- **Patrones y principios aplicados:** Defensa en profundidad para secretos (gitleaks en CI + prueba local); mínimo privilegio (`permissions: contents: read`).
+- **Comandos de terminal ejecutados:**
+  ```bash
+  git ls-remote --tags ...      # checkout v7.0.1, setup-uv v10.3.3, gitleaks-action v3.0.0, trivy-action v0.36.0
+  make UV="python -m uv" ci     # lint OK, mypy OK, 4 pruebas OK, pip-audit sin vulnerabilidades conocidas
+  ```
+- **Acciones de Git:** Rama `feature/TASK-04-ci`; commit y merge ver `git log` de develop.
+- **Dependencias agregadas:** Ninguna
+- **Reporte de pruebas:**
+  | Suite / nivel | Total | ✅ Pasaron | ❌ Fallaron | Cobertura ramas (medida) |
+  |---|---|---|---|---|
+  | Unitarias | 4 | 4 | 0 | 100 % (0 sentencias; sin código de dominio aún) |
+  | **Total** | 4 | 4 | 0 | 100 % |
+- **Casos ejecutados:**
+  - [x] `test_sin_secretos.py`: sin `.env`/`.pem`/`.key` versionados; sin patrones de claves (NFR-SEG-02)
+  - [x] `make ci`: ruff, ruff format, mypy estricto, pytest con cobertura de ramas, pip-audit (NFR-CAL-01, NFR-SEG-01)
+- **Intentos del bucle interno:** 1/3
+- **Estado actualizado:** tasks.md TASK-04 `[x]` · FASE_TRACKING Fase 2 `✅`, Fase 3 `⏳`
+- **Pendientes o riesgos:** El workflow aún no se ejecutó (no hay remoto en GitHub, PA-09). `gitleaks-action` puede requerir licencia en organizaciones de GitHub (gratis en cuentas personales): verificar al elegir el remoto. Trivy y SBOM quedan para la primera ejecución del pipeline. Bloque 0 sin revisión de código dedicada (no hay lógica de dominio); la revisión formal comienza en el Bloque 1.
