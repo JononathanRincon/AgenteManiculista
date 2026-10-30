@@ -1,0 +1,39 @@
+# Secretos: nunca al repositorio (solo .env.example)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+**/secrets/
+service-account*.json
+
+# Base de datos local
+*.db
+*.db-wal
+*.db-shm
+/data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Editor / SO
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Herramientas locales de Claude
+.claude/settings.local.json
+graphify-out/
