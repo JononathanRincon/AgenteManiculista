@@ -159,14 +159,14 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 ## Fase 12 — Documentación (Bloque 10)
 > **Criterio de desbloqueo:** Fase 11 cerrada.
 
-- [ ] ⏳ **12.1 README, manual de la clienta, runbook y CHANGELOG**
+- [x] ✅ **12.1 README, manual de la clienta, runbook y CHANGELOG**
   - Tareas: TASK-48 … TASK-50
-  - Cierre: <fecha> · AI_PROCESS #<N>
+  - Cierre: 2026-10-30 · AI_PROCESS #22
 
 ## Fase 13 — Lanzamiento
 > **Criterio de desbloqueo:** todas las fases anteriores cerradas.
 
-- [ ] 🕓 **13.1 Go/no-go**
+- [ ] ⏳ **13.1 Go/no-go**
   - [ ] `/agent-skills:ship` con decisión go
   - [ ] Despliegue de la demo con confirmación del usuario
   - [ ] Condiciones diferidas resueltas: PA-07, PA-09, PA-10, PA-15
