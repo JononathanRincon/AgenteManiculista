@@ -704,3 +704,21 @@
 - **Hallazgos de la revisión (TASK-53, autorrevisión):** sin críticos ni altos. Observación baja: `horarios_ofrecibles` recorre hasta el cierre aunque `limite` se alcance antes (corta por `limite`, correcto).
 - **Intentos del bucle interno:** 1/3 por tarea (más un ajuste de lint).
 - **Estado actualizado:** tasks.md TASK-09, 10, 11, 53 `[x]`; Fase 4 `✅`; Fase 5 `⏳`.
+
+## Entrada 14 — 2026-10-30 — Bloque 3 completo: TASK-12, 13 y 54 (Fase 5)
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code
+- **Fase / tarea:** Fase 5 — Caché · TASK-12, TASK-13 y TASK-54
+- **Prompt utilizado (literal):**
+  ```text
+  hagas todos los bloques de una vez, avisame cuando termines
+  ```
+- **Output del agente (resumen):** `app/metricas.py` (contadores atómicos con `INSERT ... ON CONFLICT DO UPDATE`, tasa de acierto), `app/reloj.py` (`RelojSistema`, `RelojFalso`), `app/cache.py` (`CacheDisponibilidad` con TTL, métricas, invalidación por día o total; espejo de eventos sincronizado con `syncToken` y resincronización completa ante `ErrorSyncTokenExpirado`; `bloques_de_evento` suma el margen posterior). El espejo guarda su frescura en memoria (se pierde al reiniciar, con lo que el primer arranque hace un refresco incremental barato) y el token en `calendario_estado`.
+- **Documentación oficial:** la forma real de `events.list` (parámetros incompatibles con `syncToken`, eventos cancelados, 410) se verifica al escribir el adaptador real en el Bloque 9 (TASK-45); en este bloque solo se usa el puerto.
+- **Archivos:** app/metricas.py, app/reloj.py, app/cache.py, tests/unit/test_cache.py, tests/unit/test_reloj.py, tests/integration/test_espejo.py.
+- **Dependencias agregadas:** ninguna.
+- **Reporte de pruebas:** 86 pasaron, 0 fallaron. Cobertura de ramas medida: cache 100 %, metricas 100 %, reloj 100 %; total 99 %.
+- **Casos:** 10 consultas → 1 llamada; reutilización del espejo entre días; expira con el TTL; invalidación por día y total; margen posterior; token incremental; 410 → listado completo; error 5xx se propaga sin dañar el espejo.
+- **Hallazgos de la revisión (TASK-54):** sin críticos ni altos. Observación media: si el refresco del espejo falla (p. ej. Calendar caído), `ocupados_del_dia` propaga el error; la capa de conversación deberá responder con un mensaje genérico y no ofrecer horarios (se trata en el Bloque 5). Observación baja: el espejo no recorta eventos fuera de la ventana en los cambios incrementales.
+- **Intentos del bucle interno:** 1/3.
+- **Estado actualizado:** tasks.md TASK-12, 13, 54 `[x]`; Fase 5 `✅`; Fase 6 `⏳`.

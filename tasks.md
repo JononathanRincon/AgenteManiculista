@@ -186,7 +186,7 @@
   - Test: `pytest tests/integration/test_espejo.py -q`
   - Hecho cuando: un 410 borra el espejo y se hace listado completo sin errores al usuario.
 
-- [ ] **TASK-54** · Revisión del Bloque 3 y cobertura medida
+- [x] **TASK-54** · Revisión del Bloque 3 y cobertura medida
   - Objetivo: cerrar el bloque.
   - Trazabilidad: NFR-CAL-01 · Plan: 5.3
   - Diseño: design.md §B3.5

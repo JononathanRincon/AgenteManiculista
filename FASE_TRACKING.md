@@ -85,17 +85,17 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 ## Fase 5 — Caché (Bloque 3)
 > **Criterio de desbloqueo:** Fase 4 cerrada.
 
-- [ ] ⏳ **5.1 Caché y espejo de eventos**
-  - [ ] **Unitarias:** `tests/unit/test_cache.py`
-  - [ ] **Integración:** `tests/integration/test_espejo.py`
+- [x] ✅ **5.1 Caché y espejo de eventos**
+  - [x] **Unitarias:** `tests/unit/test_cache.py`
+  - [x] **Integración:** `tests/integration/test_espejo.py`
   - Tareas: TASK-12, TASK-13, TASK-54
-  - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida)
-  - Cierre: <fecha> · AI_PROCESS #<N>
+  - Pruebas: pasadas 86 · fallidas 0 · cobertura ramas 99 % (medida)
+  - Cierre: 2026-10-30 · AI_PROCESS #14
 
 ## Fase 6 — Reservas, cola y worker (Bloque 4)
 > **Criterio de desbloqueo:** Fase 5 cerrada.
 
-- [ ] 🕓 **6.1 Reservas y concurrencia**
+- [ ] ⏳ **6.1 Reservas y concurrencia**
   - [ ] **Integración:** `test_reservas.py`, `test_concurrencia.py`
   - Tareas: TASK-14, TASK-15
 - [ ] 🕓 **6.2 Cola, worker, expiración, cancelar y reagendar**
