@@ -729,7 +729,7 @@
 ## Bloque 10 — Documentación (Fase 12)
 *Skills:* `documentation-and-adrs`
 
-- [ ] **TASK-48** · Redactar el README técnico con el diagrama Mermaid del flujo completo
+- [x] **TASK-48** · Redactar el README técnico con el diagrama Mermaid del flujo completo
   - Objetivo: instalación, despliegue, variables, operación de la cola, privacidad y `GEMINI_TIER`.
   - Trazabilidad: NFR-DES-01, EARS-INT-02 · Plan: 12.1
   - Diseño: design.md §B10.4 (⚠️ precios y política de datos de Gemini verificados al redactar)
