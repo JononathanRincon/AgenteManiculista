@@ -249,7 +249,7 @@
   - Test: `pytest tests/integration/test_worker.py -q -k "backoff or cuota"`
   - Hecho cuando: un 429 simulado reintenta, pausa la cola y termina con un solo evento.
 
-- [ ] **TASK-19** · Expirar reservas PENDIENTE a los 10 minutos
+- [x] **TASK-19** · Expirar reservas PENDIENTE a los 10 minutos
   - Objetivo: tarea de limpieza que libera bloques y avisa.
   - Trazabilidad: US-07, EARS-RES-06, EC-08 · Plan: 6.4
   - Diseño: design.md §1.5, §B4.4

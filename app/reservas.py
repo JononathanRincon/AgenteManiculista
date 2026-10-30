@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from app.cola import clave_idempotencia, encolar
 from app.config import Config, Modalidad
 from app.disponibilidad import bloques_ocupados, horarios_ofrecibles
-from app.modelos import Reserva, ReservaBloque
+from app.modelos import ColaEscritura, Reserva, ReservaBloque
 
 ESTADOS_ACTIVOS = ("PENDIENTE", "CONFIRMADA")
 ESTADOS_QUE_RETIENEN = ("PENDIENTE", "CONFIRMADA", "CANCELANDO")
@@ -201,3 +201,44 @@ def revertir_reagendar(
         .values(reserva_id=vieja.id)
     )
     liberar(sesion, nueva, "FALLIDA", ahora)
+
+
+def expirar_pendientes(sesion: Session, config: Config, ahora: datetime) -> list[Reserva]:
+    """PENDIENTE vencidas -> EXPIRADA, libera bloques y cancela su trabajo (EARS-RES-06)."""
+    vencidas = sesion.scalars(
+        select(Reserva).where(Reserva.estado == "PENDIENTE", Reserva.expira_en < ahora)
+    ).all()
+    expiradas: list[Reserva] = []
+    for reserva in vencidas:
+        trabajo = sesion.scalar(
+            select(ColaEscritura).where(
+                ColaEscritura.reserva_id == reserva.id,
+                ColaEscritura.tipo_operacion.in_(("CREAR", "REAGENDAR")),
+                ColaEscritura.estado.in_(("PENDIENTE", "PROCESANDO")),
+            )
+        )
+        if trabajo is not None and trabajo.estado == "PROCESANDO":
+            continue  # el worker lo está ejecutando: que termine o falle
+        if trabajo is not None:
+            trabajo.estado = "COMPLETADA"
+            trabajo.resultado = "expirada"
+            trabajo.actualizado_en = ahora
+            if trabajo.intentos > 0:  # pudo haber quedado un evento huérfano de un intento previo
+                encolar(
+                    sesion,
+                    calendario_id=reserva.calendario_id,
+                    tipo="ELIMINAR",
+                    payload={"reserva_id": reserva.id},
+                    clave=clave_idempotencia(
+                        reserva.telefono, reserva.inicio, "ELIMINAR", reserva.id
+                    ),
+                    reserva_id=reserva.id,
+                    ahora=ahora,
+                )
+        if reserva.reemplaza_a is not None:
+            revertir_reagendar(sesion, reserva, cargar(sesion, reserva.reemplaza_a), config, ahora)
+            reserva.estado = "EXPIRADA"
+        else:
+            liberar(sesion, reserva, "EXPIRADA", ahora)
+        expiradas.append(reserva)
+    return expiradas
