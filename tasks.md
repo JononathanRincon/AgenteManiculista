@@ -686,7 +686,7 @@
   - Test: `pytest tests/integration/test_calendario_google.py -q`
   - Hecho cuando: 403/429 con `usageLimits` se mapean a `CuotaExcedida` y 5xx a `ErrorTransitorio`.
 
-- [ ] **TASK-46** · Implementar `events.watch`, `/webhook/calendar` y la renovación del canal
+- [x] **TASK-46** · Implementar `events.watch`, `/webhook/calendar` y la renovación del canal
   - Objetivo: invalidar el caché al instante cuando la dueña agenda a mano.
   - Trazabilidad: US-08, EARS-CAC-02, EARS-CAC-03 · Plan: 11.2
   - Diseño: design.md §B9.3, §B9.4

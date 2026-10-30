@@ -6,6 +6,7 @@ Solo sirve para OFRECER horarios; ninguna escritura se decide con estos datos (E
 from __future__ import annotations
 
 import json
+import threading
 from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy import Engine, delete, select
@@ -49,6 +50,7 @@ class CacheDisponibilidad:
         self._negocio = negocio
         self._reloj = reloj
         self._espejo_valido_hasta: dict[str, datetime] = {}
+        self._candado_espejo = threading.Lock()  # dos resincronizaciones no pisan el sync token
 
     def ocupados_del_dia(self, calendario_id: str, fecha: date) -> set[datetime]:
         """Bloques ocupados por Calendar ese día (hora de Bogotá), desde caché si está vigente."""
@@ -89,8 +91,17 @@ class CacheDisponibilidad:
             s.execute(consulta)
         self._espejo_valido_hasta.pop(calendario_id, None)
 
+    def resincronizar(self, calendario_id: str) -> None:
+        """Invalida el caché y trae del calendario lo que cambió (push o refresco periódico)."""
+        self.invalidar(calendario_id)
+        self._refrescar_espejo(calendario_id, self._reloj.ahora())
+
     # --- espejo ---
     def _refrescar_espejo(self, calendario_id: str, ahora: datetime) -> None:
+        with self._candado_espejo:
+            self._refrescar_espejo_bloqueado(calendario_id, ahora)
+
+    def _refrescar_espejo_bloqueado(self, calendario_id: str, ahora: datetime) -> None:
         valido = self._espejo_valido_hasta.get(calendario_id)
         if valido is not None and valido > ahora:
             return

@@ -14,7 +14,7 @@ import logging
 from datetime import UTC, datetime
 from typing import Annotated, Literal, Protocol
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.exc import IntegrityError
@@ -258,6 +258,29 @@ async def _leer_acotado(request: Request) -> bytes:
         if len(cuerpo) > LIMITE_CUERPO:
             raise HTTPException(status_code=413, detail="cuerpo demasiado grande")
     return bytes(cuerpo)
+
+
+def crear_router_calendar() -> APIRouter:
+    """Notificaciones push de Google Calendar: solo avisan "algo cambió" (EARS-CAC-02)."""
+    router = APIRouter()
+
+    @router.post("/webhook/calendar")
+    async def calendar(request: Request, tareas: BackgroundTasks) -> dict[str, bool]:
+        limite: LimiteTasa = request.app.state.limite_calendar
+        origen = request.client.host if request.client else "desconocido"
+        recibido = request.headers.get("x-goog-channel-token", "")
+        esperado: str = request.app.state.calendar_channel_token
+        if not limite.permitir(origen) or not (
+            recibido and hmac.compare_digest(recibido.encode(), esperado.encode())
+        ):
+            raise HTTPException(status_code=403, detail="no autorizado")
+        if request.headers.get("x-goog-resource-state") != "sync":  # "sync" es solo el saludo
+            tareas.add_task(
+                request.app.state.alinear_calendario
+            )  # tras responder: Google reintenta
+        return {"ok": True}
+
+    return router
 
 
 def crear_router_whatsapp() -> APIRouter:
