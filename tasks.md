@@ -269,7 +269,7 @@
   - Test: `pytest tests/integration/test_cancelar.py -q`
   - Hecho cuando: los bloques se liberan solo tras eliminar el evento y la cancelación con CREAR pendiente se encola detrás.
 
-- [ ] **TASK-21** · Implementar `reagendar` sin dejar a la clienta sin cita
+- [x] **TASK-21** · Implementar `reagendar` sin dejar a la clienta sin cita
   - Objetivo: crear la nueva, eliminar la anterior y revertir si algo falla; transferir bloques propios.
   - Trazabilidad: US-04, EARS-RES-07, EC-13 · Plan: 6.4
   - Diseño: design.md §2.3, §B4.4

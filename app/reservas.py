@@ -10,7 +10,7 @@ import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import ColumnElement, delete, func, or_, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -94,27 +94,25 @@ def _existente(sesion: Session, solicitud: SolicitudReserva) -> Reserva | None:
 
 def contar_futuras(sesion: Session, telefono: str, ahora: datetime) -> int:
     """Citas futuras activas (PENDIENTE o CONFIRMADA) de una clienta."""
-    consulta = select(func.count()).select_from(Reserva)
-    consulta = consulta.where(
-        Reserva.telefono == telefono, Reserva.estado.in_(ESTADOS_ACTIVOS), Reserva.inicio >= ahora
-    )
+    consulta = select(func.count()).select_from(Reserva).where(*_filtro_futuras(telefono, ahora))
     return int(sesion.scalar(consulta) or 0)
 
 
-def reservar(
-    sesion: Session, solicitud: SolicitudReserva, config: Config, ahora: datetime
-) -> Reserva:
-    """Reserva + bloques + trabajo CREAR en una sola transacción (EARS-RES-01..03)."""
-    _validar(solicitud, config, ahora)
-    existente = _existente(sesion, solicitud)
-    if existente is not None:  # reconfirmación de la misma clienta: devuelve la misma reserva
-        return existente
+def _filtro_futuras(telefono: str, ahora: datetime) -> tuple[ColumnElement[bool], ...]:
+    """Citas activas futuras; la nueva de un reagendamiento en curso no cuenta doble."""
+    return (
+        Reserva.telefono == telefono,
+        Reserva.estado.in_(ESTADOS_ACTIVOS),
+        Reserva.inicio >= ahora,
+        or_(Reserva.estado == "CONFIRMADA", Reserva.reemplaza_a.is_(None)),
+    )
+
+
+def _construir(solicitud: SolicitudReserva, config: Config, ahora: datetime) -> Reserva:
     negocio = config.negocio
-    if contar_futuras(sesion, solicitud.telefono, ahora) >= negocio.max_citas_futuras_por_clienta:
-        raise LimiteCitas(solicitud.telefono)
     servicio = config.servicio(solicitud.servicio_id)
     domicilio = solicitud.modalidad == "domicilio"
-    reserva = Reserva(
+    return Reserva(
         calendario_id=negocio.calendario_id,
         telefono=solicitud.telefono,
         nombre_perfil=solicitud.nombre_perfil,
@@ -130,8 +128,23 @@ def reservar(
         creado_en=ahora,
         actualizado_en=ahora,
     )
+
+
+def reservar(
+    sesion: Session, solicitud: SolicitudReserva, config: Config, ahora: datetime
+) -> Reserva:
+    """Reserva + bloques + trabajo CREAR en una sola transacción (EARS-RES-01..03)."""
+    _validar(solicitud, config, ahora)
+    existente = _existente(sesion, solicitud)
+    if existente is not None:  # reconfirmación de la misma clienta: devuelve la misma reserva
+        return existente
+    negocio = config.negocio
+    if contar_futuras(sesion, solicitud.telefono, ahora) >= negocio.max_citas_futuras_por_clienta:
+        raise LimiteCitas(solicitud.telefono)
+    reserva = _construir(solicitud, config, ahora)
     sesion.add(reserva)
     sesion.flush()
+    servicio = config.servicio(solicitud.servicio_id)
     bloques = bloques_ocupados(solicitud.inicio, servicio, solicitud.modalidad, negocio)
     try:
         cal = negocio.calendario_id
@@ -281,3 +294,67 @@ def cancelar(sesion: Session, reserva_id: int, telefono: str, ahora: datetime) -
         ahora=ahora,
     )
     return reserva
+
+
+def reagendar(
+    sesion: Session,
+    reserva_id: int,
+    telefono: str,
+    nuevo_inicio: datetime,
+    config: Config,
+    ahora: datetime,
+) -> Reserva:
+    """Crea la reserva nueva (toma los bloques propios) y encola REAGENDAR (EARS-RES-07)."""
+    vieja = _de_la_clienta(sesion, reserva_id, telefono)
+    if vieja.estado != "CONFIRMADA":
+        raise ReservaInvalida("solo se reagenda una cita confirmada")
+    en_curso = sesion.scalar(
+        select(Reserva).where(Reserva.reemplaza_a == vieja.id, Reserva.estado == "PENDIENTE")
+    )
+    if en_curso is not None:
+        if en_curso.inicio == nuevo_inicio:
+            return en_curso  # reconfirmación: misma reserva
+        raise ReservaInvalida("hay un reagendamiento en curso")
+    if nuevo_inicio == vieja.inicio:
+        raise ReservaInvalida("el nuevo horario es el mismo de la cita")
+    solicitud = SolicitudReserva(
+        telefono=telefono,
+        nombre_perfil=vieja.nombre_perfil,
+        servicio_id=vieja.servicio_id,
+        inicio=nuevo_inicio,
+        modalidad=vieja.modalidad,  # type: ignore[arg-type]
+        direccion=vieja.direccion,
+    )
+    _validar(solicitud, config, ahora)
+    nueva = _construir(solicitud, config, ahora)
+    nueva.reemplaza_a = vieja.id
+    sesion.add(nueva)
+    sesion.flush()
+    negocio = config.negocio
+    servicio = config.servicio(vieja.servicio_id)
+    for bloque in bloques_ocupados(nuevo_inicio, servicio, solicitud.modalidad, negocio):
+        fila = sesion.get(ReservaBloque, (negocio.calendario_id, bloque))
+        if fila is None:
+            sesion.add(
+                ReservaBloque(
+                    calendario_id=negocio.calendario_id, bloque_inicio=bloque, reserva_id=nueva.id
+                )
+            )
+        elif fila.reserva_id == vieja.id:  # bloque propio: se transfiere (EC-13)
+            fila.reserva_id = nueva.id
+        else:
+            raise HorarioOcupado(nuevo_inicio.isoformat())
+    try:
+        sesion.flush()
+    except IntegrityError as exc:
+        raise HorarioOcupado(nuevo_inicio.isoformat()) from exc
+    encolar(
+        sesion,
+        calendario_id=negocio.calendario_id,
+        tipo="REAGENDAR",
+        payload={"reserva_nueva_id": nueva.id, "reserva_vieja_id": vieja.id},
+        clave=clave_idempotencia(telefono, nuevo_inicio, "REAGENDAR", nueva.id),
+        reserva_id=nueva.id,
+        ahora=ahora,
+    )
+    return nueva
