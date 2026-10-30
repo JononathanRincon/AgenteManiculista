@@ -145,6 +145,7 @@
 - [x] **11.4** Revisión del bloque
 - [x] **11.5** Cableado de producción (TASK-73)
 - [x] **11.6** Correcciones de la auditoría del bloque (TASK-74)
+- [ ] **11.7** Vulnerabilidades de la imagen del sidecar (TASK-75)
 
 ### Fase 12 — Documentación (Bloque 10)
 *Skills:* `documentation-and-adrs`

@@ -736,6 +736,16 @@
   - Test: `pytest tests/integration/test_calendario_google.py tests/integration/test_push.py tests/unit/test_settings.py -q`
   - Hecho cuando: un evento futuro fuera de la ventana entra al espejo, `SIMULADOR` con `produccion` no arranca y un flood de tokens falsos no bloquea el token válido.
 
+- [x] **TASK-75** · Corregir las vulnerabilidades de la imagen del sidecar detectadas por Trivy en CI
+  - Objetivo: que el job "Build de imágenes y escaneo" pase (HIGH/CRITICAL con parche disponible).
+  - Trazabilidad: NFR-SEG-01 · Plan: 11.7
+  - Diseño: design.md §5, §B8
+  - Skill: `ci-cd-and-automation`, `security-and-hardening`
+  - Archivos: `sidecar/Dockerfile`
+  - Entregable: imagen del sidecar sin paquetes del sistema vulnerables ni npm en la etapa final
+  - Test: `docker compose --profile whatsapp build` y el job de CI en verde
+  - Hecho cuando: Trivy no reporta HIGH/CRITICAL con corrección disponible en el sidecar.
+
 ## Bloque 10 — Documentación (Fase 12)
 *Skills:* `documentation-and-adrs`
 
