@@ -242,3 +242,42 @@ def expirar_pendientes(sesion: Session, config: Config, ahora: datetime) -> list
             liberar(sesion, reserva, "EXPIRADA", ahora)
         expiradas.append(reserva)
     return expiradas
+
+
+def _de_la_clienta(sesion: Session, reserva_id: int, telefono: str) -> Reserva:
+    """Carga la reserva solo si pertenece a ese teléfono (aislamiento entre clientas)."""
+    reserva = cargar(sesion, reserva_id)
+    if reserva.telefono != telefono:
+        raise ReservaNoEncontrada(str(reserva_id))
+    return reserva
+
+
+def _reagendar_en_curso(sesion: Session, reserva_id: int) -> bool:
+    consulta = select(func.count()).select_from(Reserva)
+    consulta = consulta.where(Reserva.reemplaza_a == reserva_id, Reserva.estado == "PENDIENTE")
+    return bool(sesion.scalar(consulta))
+
+
+def cancelar(sesion: Session, reserva_id: int, telefono: str, ahora: datetime) -> Reserva:
+    """PENDIENTE/CONFIRMADA -> CANCELANDO + trabajo ELIMINAR; retiene bloques (EARS-RES-08)."""
+    reserva = _de_la_clienta(sesion, reserva_id, telefono)
+    if reserva.estado in ("CANCELANDO", "CANCELADA"):
+        return reserva
+    if reserva.estado not in ESTADOS_ACTIVOS:
+        raise ReservaInvalida(f"no se puede cancelar una reserva {reserva.estado}")
+    if _reagendar_en_curso(sesion, reserva.id):
+        raise ReservaInvalida("hay un reagendamiento en curso")
+    reserva.estado = "CANCELANDO"
+    reserva.expira_en = None
+    reserva.actualizado_en = ahora
+    # el trabajo va al final de la fila: si el CREAR sigue en cola, se ejecuta antes (EC-12)
+    encolar(
+        sesion,
+        calendario_id=reserva.calendario_id,
+        tipo="ELIMINAR",
+        payload={"reserva_id": reserva.id, "event_id": reserva.event_id},
+        clave=clave_idempotencia(reserva.telefono, reserva.inicio, "ELIMINAR", reserva.id),
+        reserva_id=reserva.id,
+        ahora=ahora,
+    )
+    return reserva

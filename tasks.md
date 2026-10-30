@@ -259,7 +259,7 @@
   - Test: `pytest tests/integration/test_expiracion.py -q`
   - Hecho cuando: una reserva atascada expira, libera su horario y no expira una PROCESANDO.
 
-- [ ] **TASK-20** · Implementar `cancelar` con estado CANCELANDO
+- [x] **TASK-20** · Implementar `cancelar` con estado CANCELANDO
   - Objetivo: retener bloques hasta que el evento se elimine.
   - Trazabilidad: US-05, EARS-RES-08, EC-12 · Plan: 6.4
   - Diseño: design.md §B4.4
