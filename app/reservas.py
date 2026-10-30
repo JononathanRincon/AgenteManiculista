@@ -358,3 +358,9 @@ def reagendar(
         ahora=ahora,
     )
     return nueva
+
+
+def citas_futuras(sesion: Session, telefono: str, ahora: datetime) -> list[Reserva]:
+    """Citas futuras activas de ESA clienta, ordenadas por fecha (EARS-RES-09)."""
+    consulta = select(Reserva).where(*_filtro_futuras(telefono, ahora)).order_by(Reserva.inicio)
+    return list(sesion.scalars(consulta))
