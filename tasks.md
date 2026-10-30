@@ -352,7 +352,7 @@
   - Test: `pytest tests/unit/test_palabras_clave.py -q`
   - Hecho cuando: "cuánto vale" y "dirección" se resuelven sin invocar al proveedor.
 
-- [ ] **TASK-28** · Añadir aviso de tratamiento de datos, deduplicación de mensajes y mensajes no textuales
+- [x] **TASK-28** · Añadir aviso de tratamiento de datos, deduplicación de mensajes y mensajes no textuales
   - Objetivo: primer contacto con aviso; descartar `wa_message_id` repetido; menú ante audio/imagen.
   - Trazabilidad: US-13, US-07, EARS-CON-06, EARS-WA-04, EC-03, EC-18 · Plan: 7.5
   - Diseño: design.md §B5.4
