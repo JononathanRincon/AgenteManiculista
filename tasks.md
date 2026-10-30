@@ -143,7 +143,7 @@
   - Test: `pytest tests/unit/test_disponibilidad.py -q -k ofrecibles`
   - Hecho cuando: la duración debe terminar antes del cierre y nunca se devuelven más de 10.
 
-- [ ] **TASK-11** · Definir el puerto `Calendario` y `CalendarioFalso`
+- [x] **TASK-11** · Definir el puerto `Calendario` y `CalendarioFalso`
   - Objetivo: contrato del dominio con Calendar y doble de pruebas con fallos programables (429, 5xx, 410).
   - Trazabilidad: EARS-COL-05, EARS-CAC-05 · Plan: 4.3
   - Diseño: design.md §B3.2, §B6.2
