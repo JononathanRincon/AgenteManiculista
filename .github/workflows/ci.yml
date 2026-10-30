@@ -1,0 +1,54 @@
+name: ci
+
+on:
+  push:
+    branches: [develop, main, "feature/**", "release/**", "hotfix/**"]
+  pull_request:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+jobs:
+  calidad:
+    name: Lint, tipos, pruebas y auditoría
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.3.3
+      - name: Instalar dependencias (lockfile)
+        run: make install
+      - name: Lint, formato y tipos estrictos
+        run: make lint
+      - name: Pruebas con cobertura de ramas
+        run: make test
+      - name: Auditoría de dependencias
+        run: |
+          uv export --no-hashes --no-emit-project -o requirements-ci.txt
+          .venv/bin/python -m pip_audit -r requirements-ci.txt --disable-pip --no-deps
+
+  secretos:
+    name: Escaneo de secretos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  imagen:
+    name: Build de imagen y escaneo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Construir imagen
+        run: docker build -t agente-manicurista:ci .
+      - name: Escanear imagen (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: agente-manicurista:ci
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true

@@ -57,7 +57,7 @@
   - Test: `docker compose build`
   - Hecho cuando: la imagen construye y declara `HEALTHCHECK` y usuario no root.
 
-- [ ] **TASK-04** · Crear pipeline de CI
+- [x] **TASK-04** · Crear pipeline de CI
   - Objetivo: ruff, mypy, pytest con cobertura, pip-audit y escaneo de secretos en cada push.
   - Trazabilidad: NFR-SEG-01, NFR-CAL-01 · Plan: 2.4
   - Diseño: TDD §10

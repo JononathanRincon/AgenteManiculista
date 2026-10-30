@@ -55,18 +55,18 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 ## Fase 2 — Infraestructura base (Bloque 0)
 > **Criterio de desbloqueo:** Fase 1 cerrada.
 
-- [ ] ⏳ **2.1 Repositorio, Docker y CI**
-  - [ ] GitFlow (`main`, `develop`)
-  - [ ] pyproject, Makefile, ruff, mypy, pytest con cobertura
-  - [ ] Dockerfile y `docker-compose.yml`
-  - [ ] CI con lint, tipos, tests, auditoría de dependencias y escaneo de secretos
+- [x] ✅ **2.1 Repositorio, Docker y CI**
+  - [x] GitFlow (`main`, `develop`)
+  - [x] pyproject, Makefile, ruff, mypy, pytest con cobertura
+  - [x] Dockerfile y `docker-compose.yml`
+  - [x] CI con lint, tipos, tests, auditoría de dependencias y escaneo de secretos
   - Tareas: TASK-01 … TASK-04
-  - Cierre: <fecha> · AI_PROCESS #<N>
+  - Cierre: 2026-10-30 · AI_PROCESS #11
 
 ## Fase 3 — Modelos y configuración (Bloque 1)
 > **Criterio de desbloqueo:** Fase 2 cerrada con 100 % de tests en verde.
 
-- [ ] 🕓 **3.1 Configuración, modelos y mensajes**
+- [ ] ⏳ **3.1 Configuración, modelos y mensajes**
   - [ ] **Unitarias:** `tests/unit/test_config.py`, `test_settings.py`, `test_mensajes.py`
   - [ ] **Integración:** `tests/integration/test_modelos.py`
   - Tareas: TASK-05 … TASK-08, TASK-52
