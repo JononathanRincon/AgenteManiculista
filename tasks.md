@@ -362,7 +362,7 @@
   - Test: `pytest tests/unit/test_dedup_aviso.py -q`
   - Hecho cuando: el mismo mensaje dos veces produce un solo efecto y no se piden datos antes del aviso.
 
-- [ ] **TASK-29** · Probar E2E el flujo de agendar con el LLM deshabilitado
+- [x] **TASK-29** · Probar E2E el flujo de agendar con el LLM deshabilitado
   - Objetivo: demostrar que el sistema funciona completo con `PROVEEDOR_LLM=none`.
   - Trazabilidad: US-11, EARS-INT-05, NFR-DIS-01 · Plan: 7.6
   - Diseño: design.md §B5.5
