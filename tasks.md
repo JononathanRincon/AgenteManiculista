@@ -498,7 +498,7 @@
   - Test: `pytest tests/unit/test_prompt_privacidad.py -q`
   - Hecho cuando: ningún teléfono, nombre, dirección ni historial aparece en el prompt en ningún escenario probado.
 
-- [ ] **TASK-40** · Crear el set de evals de frases de ejemplo
+- [x] **TASK-40** · Crear el set de evals de frases de ejemplo
   - Objetivo: medir el comportamiento esperado del orquestador con frases reales.
   - Trazabilidad: US-11, EARS-INT-03 · Plan: 9.6
   - Diseño: design.md §B7.1, §B7.5
