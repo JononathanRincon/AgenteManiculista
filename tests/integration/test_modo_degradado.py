@@ -68,7 +68,9 @@ async def test_sin_url_publica_refresca_el_espejo_y_registra_modo_degradado(
 
 
 async def test_con_canal_vigente_no_refresca_a_mano(engine: Engine, cfg: Config) -> None:
-    gestor, cache, calendario, _ = _montaje(engine, cfg, url="https://agenda.ejemplo.co/w")
+    gestor, cache, calendario, _ = _montaje(
+        engine, cfg, url="https://agenda.ejemplo.co/webhook/calendar"
+    )
     await _ciclos(gestor, cache, cfg.negocio.calendario_id, 3)
     assert calendario.llamadas["listar_eventos"] == 0
     salud = construir_salud(engine, cfg)

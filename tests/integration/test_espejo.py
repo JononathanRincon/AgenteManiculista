@@ -129,3 +129,15 @@ def test_errores_distintos_de_410_se_propagan_sin_romper_el_espejo(
         cache.ocupados_del_dia(CAL, MARTES)
     assert len(_ids_espejo(engine)) == 1
     assert _local(9) in cache.ocupados_del_dia(CAL, MARTES + timedelta(days=0))
+
+
+def test_el_refresco_poda_del_espejo_lo_que_ya_termino(engine: Engine, cfg: Config) -> None:
+    cal = CalendarioEspia()
+    reloj = RelojFalso(AHORA)
+    cal.agregar_evento_manual(_local(9), _local(10))
+    cache = CacheDisponibilidad(engine, cal, cfg.negocio, reloj)
+    cache.ocupados_del_dia(CAL, MARTES)
+    assert len(_ids_espejo(engine)) == 1
+    reloj.avanzar(days=3)  # el evento terminó hace más de un día
+    cache.resincronizar(CAL)
+    assert _ids_espejo(engine) == set()

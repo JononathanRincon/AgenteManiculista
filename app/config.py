@@ -251,6 +251,13 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def _produccion_sin_simulador(self) -> Self:
+        # el simulador usa un calendario falso: citas "confirmadas" sin evento real en Google
+        if self.entorno == "produccion" and self.simulador:
+            raise ValueError("SIMULADOR=true no se permite con ENTORNO=produccion")
+        return self
+
+    @model_validator(mode="after")
     def _produccion_exige_tier_de_pago(self) -> Self:
         # el tier gratuito puede usar el contenido para mejorar productos de Google (Ley 1581)
         usa_gemini_en_produccion = self.entorno == "produccion" and self.proveedor_llm == "gemini"

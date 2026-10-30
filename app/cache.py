@@ -93,8 +93,9 @@ class CacheDisponibilidad:
 
     def resincronizar(self, calendario_id: str) -> None:
         """Invalida el caché y trae del calendario lo que cambió (push o refresco periódico)."""
-        self.invalidar(calendario_id)
-        self._refrescar_espejo(calendario_id, self._reloj.ahora())
+        with self._candado_espejo:  # invalidar y refrescar sin que otro hilo se interponga
+            self.invalidar(calendario_id)
+            self._refrescar_espejo_bloqueado(calendario_id, self._reloj.ahora())
 
     # --- espejo ---
     def _refrescar_espejo(self, calendario_id: str, ahora: datetime) -> None:
@@ -121,6 +122,11 @@ class CacheDisponibilidad:
         with unidad_de_trabajo(self._engine) as s:
             if resultado.resincronizacion_completa:
                 s.execute(delete(EventoEspejo).where(EventoEspejo.calendario_id == calendario_id))
+            s.execute(  # poda: lo ya terminado no sirve para ofrecer horarios
+                delete(EventoEspejo).where(
+                    EventoEspejo.calendario_id == calendario_id, EventoEspejo.fin < desde
+                )
+            )
             for e in resultado.eventos:
                 if e.cancelado:
                     s.execute(

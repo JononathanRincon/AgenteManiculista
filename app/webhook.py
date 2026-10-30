@@ -270,14 +270,13 @@ def crear_router_calendar() -> APIRouter:
         origen = request.client.host if request.client else "desconocido"
         recibido = request.headers.get("x-goog-channel-token", "")
         esperado: str = request.app.state.calendar_channel_token
-        if not limite.permitir(origen) or not (
-            recibido and hmac.compare_digest(recibido.encode(), esperado.encode())
-        ):
+        if not (recibido and hmac.compare_digest(recibido.encode(), esperado.encode())):
+            # solo los fallos cuentan: un flood de tokens falsos no debe tapar los avisos válidos
+            if not limite.permitir(origen):
+                raise HTTPException(status_code=429, detail="demasiados intentos")
             raise HTTPException(status_code=403, detail="no autorizado")
         if request.headers.get("x-goog-resource-state") != "sync":  # "sync" es solo el saludo
-            tareas.add_task(
-                request.app.state.alinear_calendario
-            )  # tras responder: Google reintenta
+            tareas.add_task(request.app.state.alinear_calendario)  # tras responder 200
         return {"ok": True}
 
     return router

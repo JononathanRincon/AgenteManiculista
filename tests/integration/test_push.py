@@ -65,18 +65,21 @@ def test_detener_canal_y_tolerar_que_ya_expiro() -> None:
     ("url", "valida"),
     [
         (URL, True),
-        ("https://8.8.8.8/x", True),
+        ("https://8.8.8.8/webhook/calendar", True),
         (None, False),
         ("", False),
         ("http://agenda.ejemplo.co/x", False),
-        ("https://localhost/x", False),
-        ("https://mi.localhost/x", False),
-        ("https://servidor.local/x", False),
-        ("https://intranet/x", False),
-        ("https://127.0.0.1/x", False),
-        ("https://192.168.1.5/x", False),
-        ("https://10.0.0.2/x", False),
+        ("https://localhost/webhook/calendar", False),
+        ("https://mi.localhost/webhook/calendar", False),
+        ("https://servidor.local/webhook/calendar", False),
+        ("https://intranet/webhook/calendar", False),
+        ("https://127.0.0.1/webhook/calendar", False),
+        ("https://192.168.1.5/webhook/calendar", False),
+        ("https://10.0.0.2/webhook/calendar", False),
         ("https:///sin-host", False),
+        ("https://127.1/webhook/calendar", False),  # IP disfrazada
+        ("https://u:p@agenda.ejemplo.co/webhook/calendar", False),  # credenciales en la URL
+        ("https://agenda.ejemplo.co/otra-ruta", False),  # Google avisaría a un destino equivocado
         ("https://[::1/x", False),  # urlsplit lo rechaza
     ],
 )
@@ -253,8 +256,10 @@ def test_frena_los_intentos_de_adivinar_el_token() -> None:
         c.post("/webhook/calendar", headers={"X-Goog-Channel-Token": f"x{i}"}).status_code
         for i in range(32)
     ]
-    assert codigos[30:] == [403, 403]
-    assert c.post("/webhook/calendar", headers={"X-Goog-Channel-Token": TOKEN}).status_code == 403
+    assert codigos[:30] == [403] * 30
+    assert codigos[30:] == [429, 429]
+    # el flood no tapa los avisos legítimos de Google
+    assert c.post("/webhook/calendar", headers={"X-Goog-Channel-Token": TOKEN}).status_code == 200
 
 
 def test_al_recuperar_el_push_se_sale_del_modo_degradado(engine: Engine) -> None:
@@ -263,3 +268,20 @@ def test_al_recuperar_el_push_se_sale_del_modo_degradado(engine: Engine) -> None
     con_url, _, _ = _gestor(engine)  # mismo estado en la base: ahora sí hay URL pública
     assert con_url.asegurar() is True
     assert _estado(engine).modo_degradado is False
+
+
+def test_si_falla_la_resincronizacion_tras_el_push_no_revienta(
+    engine: Engine, caplog: pytest.LogCaptureFixture
+) -> None:
+    from app.produccion import Produccion
+
+    class CacheRota:
+        def resincronizar(self, calendario_id: str) -> None:
+            raise ErrorTransitorio("sin red")
+
+    prod = Produccion.__new__(Produccion)
+    prod.cache = CacheRota()  # type: ignore[assignment]
+    prod.calendario_id = "cal"
+    caplog.set_level("WARNING", logger="produccion")
+    prod.alinear_calendario()
+    assert any(r.getMessage() == "resincronizacion_fallida" for r in caplog.records)
