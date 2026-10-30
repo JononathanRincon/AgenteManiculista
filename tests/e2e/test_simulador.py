@@ -234,3 +234,79 @@ def test_errores_internos_de_la_demo_se_traducen_a_http(cliente: TestClient) -> 
     demo.mensaje = telefono_malo
     cuerpo = {"telefono_demo": TEL, "texto": "hola"}
     assert cliente.post("/demo/api/mensaje", json=cuerpo).status_code == 422
+
+
+def test_demo_ramas_de_la_carrera_y_del_mensaje(cliente: TestClient) -> None:
+    from app.simulador.demo import CarreraSinGanadora, HorarioNoDisponible
+
+    demo = cliente.app.state.demo  # type: ignore[attr-defined]
+    demo.mensaje(TEL)  # sin texto ni botón: no registra nada de la clienta
+    assert [m.de for m in demo.transporte.historial(TEL)] == ["bot"]
+
+    original = demo.agente.procesar
+
+    def ignora_confirmaciones(entrante):  # type: ignore[no-untyped-def]
+        return [] if entrante.id_interactivo == "conf:si" else original(entrante)
+
+    demo.agente.procesar = ignora_confirmaciones
+    with pytest.raises(CarreraSinGanadora):
+        demo.carrera()
+
+    def segunda_sin_la_hora(entrante):  # type: ignore[no-untyped-def]
+        salidas = original(entrante)
+        if entrante.telefono.endswith("2") and (entrante.id_interactivo or "").startswith("dia:"):
+            for s in salidas:
+                s.opciones[:] = [o for o in s.opciones if not o.id.startswith("hora:")]
+        return salidas
+
+    demo.agente.procesar = segunda_sin_la_hora
+    with pytest.raises(HorarioNoDisponible):
+        demo.carrera()
+
+
+def test_demo_sin_horarios_y_con_horario_explicito_valido(tmp_path: Path, cfg: Config) -> None:
+
+    from app.simulador.demo import HorarioNoDisponible
+
+    cerrado = cfg.negocio.model_copy(update={"horario": {d: None for d in cfg.negocio.horario}})
+    app = crear_app(
+        _ajustes(tmp_path, simulador=True),
+        cfg.model_copy(update={"negocio": cerrado}),
+        RelojFalso(AHORA),
+    )
+    with TestClient(app) as c:
+        assert c.post("/demo/api/carrera", json={}).status_code == 409
+        with pytest.raises(HorarioNoDisponible):
+            c.app.state.demo.carrera()  # type: ignore[attr-defined]
+
+
+def test_demo_carrera_con_un_horario_explicito_que_si_esta_libre(cliente: TestClient) -> None:
+    r = cliente.post("/demo/api/carrera", json={"inicio": "2026-11-02T09:30:00-05:00"})
+    assert r.status_code == 200
+    demo = cliente.app.state.demo  # type: ignore[attr-defined]
+    while demo.worker.procesar_uno():
+        pass
+    inicios = [e["inicio"] for e in cliente.get("/demo/api/calendario").json()["eventos"]]
+    assert inicios == ["2026-11-02T09:30:00-05:00"]
+
+
+async def test_la_ruta_de_eventos_devuelve_un_flujo_sse(cliente: TestClient) -> None:
+    from app.simulador.rutas import crear_router
+
+    ruta = next(r for r in crear_router().routes if getattr(r, "path", "") == "/demo/api/eventos")
+    respuesta = await ruta.endpoint(cliente.app.state.demo)  # type: ignore[attr-defined]
+    assert respuesta.media_type == "text/event-stream"
+    assert respuesta.headers["cache-control"] == "no-cache"
+    await respuesta.body_iterator.aclose()
+
+
+async def test_varios_avisos_seguidos_se_funden_en_uno(cliente: TestClient) -> None:
+    demo = cliente.app.state.demo  # type: ignore[attr-defined]
+    flujo = flujo_eventos(demo, latido_s=5)
+    await anext(flujo)  # retry
+    siguiente = asyncio.ensure_future(anext(flujo))
+    await asyncio.sleep(0.01)
+    demo._notificar()  # noqa: SLF001
+    demo._notificar()  # noqa: SLF001
+    assert (await asyncio.wait_for(siguiente, timeout=2)).startswith("event: cambio")
+    await flujo.aclose()

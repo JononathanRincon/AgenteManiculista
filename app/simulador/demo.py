@@ -11,7 +11,7 @@ import threading
 import uuid
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import Engine, delete, select
 
@@ -168,7 +168,7 @@ class Demo:
             raise HorarioNoDisponible("sin horarios")
         if inicio is None:
             return horas[0]
-        pedido = f"hora:{inicio.isoformat()}"
+        pedido = f"hora:{inicio.astimezone(UTC).isoformat()}"  # los ids de hora van en UTC
         if pedido not in horas:
             raise HorarioNoDisponible(pedido)
         return pedido

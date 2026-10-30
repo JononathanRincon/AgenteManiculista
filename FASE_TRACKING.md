@@ -117,17 +117,17 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 ## Fase 8 — Simulador (Bloque 6)
 > **Criterio de desbloqueo:** Fase 7 cerrada.
 
-- [ ] ⏳ **8.1 Simulador `/demo`**
-  - [ ] **Unitarias:** `test_transporte_simulado.py`
-  - [ ] **E2E:** `tests/e2e/test_simulador.py`
+- [x] ✅ **8.1 Simulador `/demo`**
+  - [x] **Unitarias:** `test_transporte_simulado.py`
+  - [x] **E2E:** `tests/e2e/test_simulador.py`
   - Tareas: TASK-30 … TASK-34, TASK-57
-  - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida)
-  - Cierre: <fecha> · AI_PROCESS #<N>
+  - Pruebas: pasadas 391 · fallidas 0 · cobertura ramas 100 % (medida)
+  - Cierre: 2026-10-30 · AI_PROCESS #18
 
 ## Fase 9 — Capa de intención (Bloque 7)
 > **Criterio de desbloqueo:** Fase 8 cerrada.
 
-- [ ] 🕓 **9.1 Intención con LLM y fallback**
+- [ ] ⏳ **9.1 Intención con LLM y fallback**
   - [ ] **Unitarias:** `test_intencion_esquema.py`, `test_intencion_orquestador.py`, `test_prompt_privacidad.py`, `test_llm_ninguno.py`, `test_llm_gemini.py`
   - [ ] **Evals:** `tests/evals/test_evals.py`
   - Tareas: TASK-35 … TASK-40, TASK-58

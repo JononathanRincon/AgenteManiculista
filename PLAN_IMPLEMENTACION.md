@@ -109,12 +109,12 @@
 
 ### Fase 8 — Simulador (Bloque 6)
 *Skills:* `frontend-ui-engineering`, `browser-testing-with-devtools`, `test-driven-development`
-- [ ] **8.1** Transporte y calendario simulado
-- [ ] **8.2** API `/demo`
-- [ ] **8.3** Interfaz `/demo` vertical presentable
-- [ ] **8.4** Botón de carrera
-- [ ] **8.5** Configuración de despliegue de la demo (sin desplegar)
-- [ ] **8.6** Revisión del bloque
+- [x] **8.1** Transporte y calendario simulado
+- [x] **8.2** API `/demo`
+- [x] **8.3** Interfaz `/demo` vertical presentable
+- [x] **8.4** Botón de carrera
+- [x] **8.5** Configuración de despliegue de la demo (sin desplegar)
+- [x] **8.6** Revisión del bloque
 
 ### Fase 9 — Capa de intención (Bloque 7)
 *Skills:* `arquitecto-de-prompts`, `source-driven-development`, `security-and-hardening`, `test-driven-development`
