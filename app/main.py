@@ -9,13 +9,16 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config import Config, Settings, cargar_config
 from app.limite_tasa import LimiteTasa
+from app.logs import configurar_logging, nuevo_correlation_id
 from app.mensajes import cargar_mensajes, configurar
 from app.modelos import crear_engine, crear_tablas
 from app.puertos import Reloj
+from app.salud import construir_salud
 from app.simulador.demo import Demo
 from app.simulador.rutas import ESTATICOS, crear_router
 
@@ -53,6 +56,7 @@ def crear_app(
     @contextlib.asynccontextmanager
     async def ciclo_de_vida(app: FastAPI) -> AsyncIterator[None]:
         verificar_un_solo_proceso()
+        configurar_logging(ajustes.log_level)
         configurar(cargar_mensajes())
         engine = crear_engine(ajustes.database_url)
         crear_tablas(engine)
@@ -85,9 +89,22 @@ def crear_app(
     app.state.settings = ajustes
     app.state.config = negocio
 
+    @app.middleware("http")
+    async def correlacion(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        respuesta_id = nuevo_correlation_id()
+        respuesta = await call_next(request)
+        respuesta.headers["X-Correlation-Id"] = respuesta_id
+        return respuesta
+
     @app.get("/health")
-    async def health() -> dict[str, str]:
-        return {"estado": "ok"}
+    async def health(request: Request) -> Response:
+        engine = getattr(request.app.state, "engine", None)
+        if engine is None:
+            return JSONResponse({"estado": "iniciando"}, status_code=503)
+        datos = await asyncio.to_thread(construir_salud, engine, negocio)
+        return JSONResponse(datos)
 
     if ajustes.simulador:
         app.state.limite_demo = LimiteTasa(maximo=300, ventana_s=60)

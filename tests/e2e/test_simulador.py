@@ -40,7 +40,7 @@ def cliente(tmp_path: Path, cfg: Config) -> Iterator[TestClient]:
 def test_rutas_no_existen_sin_simulador(tmp_path: Path, cfg: Config) -> None:
     app = crear_app(_ajustes(tmp_path, simulador=False), cfg)
     with TestClient(app) as c:
-        assert c.get("/health").json() == {"estado": "ok"}
+        assert c.get("/health").json()["estado"] == "ok"
         assert c.get("/demo").status_code == 404
         assert c.get("/demo/api/calendario").status_code == 404
         cuerpo = {"telefono_demo": TEL, "texto": "hola"}

@@ -551,7 +551,7 @@
   - Test: `pytest tests/integration/test_whatsapp_cliente.py -q`
   - Hecho cuando: respeta el máximo de 3 botones y 10 filas y reintenta sin duplicar envíos.
 
-- [ ] **TASK-44** · Exponer `/health` y logging JSON con teléfono enmascarado
+- [x] **TASK-44** · Exponer `/health` y logging JSON con teléfono enmascarado
   - Objetivo: métricas operativas sin PII y logs estructurados.
   - Trazabilidad: US-10, EARS-OBS-01, NFR-PRI-02, NFR-OBS-01 · Plan: 10.4
   - Diseño: design.md §1.6, §B8.3, §B8.4
