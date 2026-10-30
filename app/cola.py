@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Literal
 
 from sqlalchemy import Engine, func, select, update
@@ -129,12 +129,17 @@ def reintentar(
         )
 
 
-def recuperar_huerfanos(engine: Engine, ahora: datetime) -> int:
-    """Al arrancar, los PROCESANDO que quedaron colgados vuelven a PENDIENTE."""
+def recuperar_huerfanos(
+    engine: Engine, ahora: datetime, antiguedad: timedelta | None = None
+) -> int:
+    """PROCESANDO colgados vuelven a PENDIENTE (al arrancar, o con más de `antiguedad`)."""
+    condiciones = [ColaEscritura.estado == "PROCESANDO"]
+    if antiguedad is not None:
+        condiciones.append(ColaEscritura.actualizado_en < ahora - antiguedad)
     with unidad_de_trabajo(engine) as s:
         resultado = s.execute(
             update(ColaEscritura)
-            .where(ColaEscritura.estado == "PROCESANDO")
+            .where(*condiciones)
             .values(estado="PENDIENTE", proxima_ejecucion=ahora, actualizado_en=ahora)
         )
         return int(resultado.rowcount)  # type: ignore[attr-defined]

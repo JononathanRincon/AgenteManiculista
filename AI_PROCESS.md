@@ -722,3 +722,25 @@
 - **Hallazgos de la revisión (TASK-54):** sin críticos ni altos. Observación media: si el refresco del espejo falla (p. ej. Calendar caído), `ocupados_del_dia` propaga el error; la capa de conversación deberá responder con un mensaje genérico y no ofrecer horarios (se trata en el Bloque 5). Observación baja: el espejo no recorta eventos fuera de la ventana en los cambios incrementales.
 - **Intentos del bucle interno:** 1/3.
 - **Estado actualizado:** tasks.md TASK-12, 13, 54 `[x]`; Fase 5 `✅`; Fase 6 `⏳`.
+
+## Entrada 15 — 2026-10-30 — Bloque 4 completo: TASK-14 a 22 y 55 (Fase 6)
+
+- **Modelo/herramienta:** Claude Sonnet 5.5 en Claude Code; revisión con los agentes `code-reviewer`, `security-auditor` y `test-engineer` en paralelo.
+- **Fase / tarea:** Fase 6 — Reservas, cola y worker · TASK-14 a TASK-22 y TASK-55
+- **Prompt utilizado (literal):**
+  ```text
+  hagas todos los bloques de una vez, avisame cuando termines
+  ```
+- **Output del agente (resumen):** `app/reservas.py` (`reservar`, `cancelar`, `reagendar`, `expirar_pendientes`, `citas_futuras`, `anonimizar_antiguas`, `event_id_para`, transiciones del worker), `app/cola.py` (FIFO estricta, reclamo atómico, reintento, pausa por cuota, huérfanos), `app/worker.py` (verificación en vivo, CREAR/ELIMINAR/REAGENDAR, backoff con jitter, límite de 5 intentos, pausa por cuota, avisos dentro de 24 h, limpieza periódica), `app/formato.py`. El id del evento de Calendar es sha256 de calendario, reserva y `creado_en` (evita choques con ids viejos si la base se reinicia).
+- **Desviaciones registradas:** (1) el worker completo se escribió antes de las pruebas de TASK-18 a 21 (las pruebas se escribieron por tarea y el código existía); (2) la FIFO es estricta por calendario (un trabajo en espera de backoff detiene la fila), decisión que garantiza que ELIMINAR nunca adelante a CREAR (EC-12); (3) `ocupacion_en_vivo` mantiene un solo `excluir_event_id` y el worker detecta ocupación ajena cruzando dos consultas en REAGENDAR.
+- **Revisión (TASK-55) con tres agentes. Hallazgos corregidos:**
+  - ALTO/CRÍTICO: una excepción distinta de `ErrorCalendario` dejaba el trabajo en PROCESANDO y detenía la cola → ahora se reintenta o falla con tope, y `limpiar()` recupera PROCESANDO de más de 5 min.
+  - ALTO: un ELIMINAR fallido dejaba la reserva en CANCELANDO reteniendo bloques → vuelve a CONFIRMADA y `cancelar` puede repetirse (clave de idempotencia con contador).
+  - ALTO: cancelar la reserva nueva de un reagendamiento liberaba bloques de la vieja → se rechaza.
+  - MEDIO: parámetros de SQL con PII en errores (`hide_parameters=True`); `resultado` de la cola guarda solo el nombre de la excepción; evento huérfano tras CREAR agotado (se encola ELIMINAR); reconfirmación cerca de la hora ahora devuelve la misma reserva; retención de PII (`anonimizar_antiguas` a 12 meses); `LimiteCitas` sin teléfono; nombre/dirección normalizados (sin saltos de línea; máx. 64/200); no se cancela ni reagenda una cita pasada.
+  - **Aceptados o diferidos con motivo:** límite de operaciones por teléfono y profundidad de cola (rate limit por IP/teléfono se implementa en el webhook, Bloque 8); purga de `cola_escritura` terminada (sin riesgo funcional, se agrega a mantenimiento); `_fallo_definitivo` no es atómico (se autorrecupera por la expiración a los 10 min); borrado de datos a petición de la clienta (se atiende como solicitud manual del operador; automatizarlo requiere un requisito nuevo en el SDD).
+- **Archivos:** app/reservas.py, cola.py, worker.py, formato.py, modelos.py (hide_parameters), config/mensajes.yaml (`nombre_desconocido`), tests/integration/* (reservas, concurrencia, cola, worker, expiracion, cancelar, reagendar, citas_futuras, worker_ramas, endurecimiento_b4).
+- **Dependencias agregadas:** ninguna.
+- **Reporte de pruebas:** 183 pasaron, 0 fallaron. Cobertura de ramas medida: reservas 100 %, cola 100 %, worker 100 %; total 99 %. Concurrencia: 2 y 50 intentos en paralelo, 0 solapes.
+- **Intentos del bucle interno:** 1/3 en la mayoría; TASK-18 2/3 (precisión al segundo de las fechas).
+- **Estado actualizado:** tasks.md TASK-14 a 22 y 55 `[x]`; Fase 6 `✅`; Fase 7 `⏳`.

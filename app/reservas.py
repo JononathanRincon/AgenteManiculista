@@ -71,8 +71,10 @@ def _validar(solicitud: SolicitudReserva, config: Config, ahora: datetime) -> No
     if solicitud.modalidad == "domicilio":
         if not negocio.domicilio.habilitado or not servicio.domicilio_permitido:
             raise ReservaInvalida("domicilio no disponible para este servicio")
-        if not solicitud.direccion:
+        if not _limpio(solicitud.direccion, MAX_DIRECCION):
             raise ReservaInvalida("el domicilio requiere dirección")
+        if len(solicitud.direccion or "") > MAX_DIRECCION:
+            raise ReservaInvalida("la dirección es demasiado larga")
     fecha = solicitud.inicio.astimezone(negocio.zona).date()
     permitidos = horarios_ofrecibles(
         fecha, servicio, solicitud.modalidad, set(), ahora, negocio, limite=1000
@@ -108,6 +110,18 @@ def _filtro_futuras(telefono: str, ahora: datetime) -> tuple[ColumnElement[bool]
     )
 
 
+MAX_NOMBRE = 64
+MAX_DIRECCION = 200
+RETENCION_DIAS = 365
+
+
+def _limpio(texto: str | None, maximo: int) -> str | None:
+    """Colapsa saltos de línea y espacios (evita falsificar líneas del evento) y recorta."""
+    if texto is None:
+        return None
+    return " ".join(texto.split())[:maximo] or None
+
+
 def _construir(solicitud: SolicitudReserva, config: Config, ahora: datetime) -> Reserva:
     negocio = config.negocio
     servicio = config.servicio(solicitud.servicio_id)
@@ -115,10 +129,10 @@ def _construir(solicitud: SolicitudReserva, config: Config, ahora: datetime) -> 
     return Reserva(
         calendario_id=negocio.calendario_id,
         telefono=solicitud.telefono,
-        nombre_perfil=solicitud.nombre_perfil,
+        nombre_perfil=_limpio(solicitud.nombre_perfil, MAX_NOMBRE),
         servicio_id=servicio.id,
         modalidad=solicitud.modalidad,
-        direccion=solicitud.direccion if domicilio else None,
+        direccion=_limpio(solicitud.direccion, MAX_DIRECCION) if domicilio else None,
         precio_cop=servicio.precio_cop,
         recargo_cop=(negocio.domicilio.recargo_cop or 0) if domicilio else 0,
         inicio=solicitud.inicio,
@@ -134,13 +148,13 @@ def reservar(
     sesion: Session, solicitud: SolicitudReserva, config: Config, ahora: datetime
 ) -> Reserva:
     """Reserva + bloques + trabajo CREAR en una sola transacción (EARS-RES-01..03)."""
-    _validar(solicitud, config, ahora)
     existente = _existente(sesion, solicitud)
     if existente is not None:  # reconfirmación de la misma clienta: devuelve la misma reserva
         return existente
+    _validar(solicitud, config, ahora)
     negocio = config.negocio
     if contar_futuras(sesion, solicitud.telefono, ahora) >= negocio.max_citas_futuras_por_clienta:
-        raise LimiteCitas(solicitud.telefono)
+        raise LimiteCitas
     reserva = _construir(solicitud, config, ahora)
     sesion.add(reserva)
     sesion.flush()
@@ -278,8 +292,17 @@ def cancelar(sesion: Session, reserva_id: int, telefono: str, ahora: datetime) -
         return reserva
     if reserva.estado not in ESTADOS_ACTIVOS:
         raise ReservaInvalida(f"no se puede cancelar una reserva {reserva.estado}")
-    if _reagendar_en_curso(sesion, reserva.id):
+    if reserva.inicio < ahora:
+        raise ReservaInvalida("la cita ya pasó")
+    nueva_de_reagendar = reserva.reemplaza_a is not None and reserva.estado == "PENDIENTE"
+    if _reagendar_en_curso(sesion, reserva.id) or nueva_de_reagendar:
         raise ReservaInvalida("hay un reagendamiento en curso")
+    previos = sesion.scalar(
+        select(func.count())
+        .select_from(ColaEscritura)
+        .where(ColaEscritura.reserva_id == reserva.id, ColaEscritura.tipo_operacion == "ELIMINAR")
+    )
+    tipo_clave = f"ELIMINAR{previos}" if previos else "ELIMINAR"  # tras un fallo se puede repetir
     reserva.estado = "CANCELANDO"
     reserva.expira_en = None
     reserva.actualizado_en = ahora
@@ -289,7 +312,7 @@ def cancelar(sesion: Session, reserva_id: int, telefono: str, ahora: datetime) -
         calendario_id=reserva.calendario_id,
         tipo="ELIMINAR",
         payload={"reserva_id": reserva.id, "event_id": reserva.event_id},
-        clave=clave_idempotencia(reserva.telefono, reserva.inicio, "ELIMINAR", reserva.id),
+        clave=clave_idempotencia(reserva.telefono, reserva.inicio, tipo_clave, reserva.id),
         reserva_id=reserva.id,
         ahora=ahora,
     )
@@ -308,6 +331,8 @@ def reagendar(
     vieja = _de_la_clienta(sesion, reserva_id, telefono)
     if vieja.estado != "CONFIRMADA":
         raise ReservaInvalida("solo se reagenda una cita confirmada")
+    if vieja.inicio < ahora:
+        raise ReservaInvalida("la cita ya pasó")
     en_curso = sesion.scalar(
         select(Reserva).where(Reserva.reemplaza_a == vieja.id, Reserva.estado == "PENDIENTE")
     )
@@ -344,10 +369,7 @@ def reagendar(
             fila.reserva_id = nueva.id
         else:
             raise HorarioOcupado(nuevo_inicio.isoformat())
-    try:
-        sesion.flush()
-    except IntegrityError as exc:
-        raise HorarioOcupado(nuevo_inicio.isoformat()) from exc
+    sesion.flush()
     encolar(
         sesion,
         calendario_id=negocio.calendario_id,
@@ -364,3 +386,18 @@ def citas_futuras(sesion: Session, telefono: str, ahora: datetime) -> list[Reser
     """Citas futuras activas de ESA clienta, ordenadas por fecha (EARS-RES-09)."""
     consulta = select(Reserva).where(*_filtro_futuras(telefono, ahora)).order_by(Reserva.inicio)
     return list(sesion.scalars(consulta))
+
+
+def anonimizar_antiguas(sesion: Session, ahora: datetime) -> int:
+    """Borra los datos personales de reservas terminadas hace más de 12 meses (Ley 1581)."""
+    limite = ahora - timedelta(days=RETENCION_DIAS)
+    resultado = sesion.execute(
+        update(Reserva)
+        .where(
+            Reserva.estado.in_(("CANCELADA", "EXPIRADA", "FALLIDA")),
+            Reserva.actualizado_en < limite,
+            Reserva.telefono != "anonimizado",
+        )
+        .values(telefono="anonimizado", nombre_perfil=None, direccion=None)
+    )
+    return int(resultado.rowcount)  # type: ignore[attr-defined]

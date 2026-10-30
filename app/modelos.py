@@ -162,7 +162,7 @@ class Metrica(Base):
 
 def crear_engine(url: str, *, busy_timeout_ms: int = 5000) -> Engine:
     """Engine SQLite con PRAGMAs de §1.3; BEGIN se emite a mano para poder usar IMMEDIATE."""
-    engine = create_engine(url)
+    engine = create_engine(url, hide_parameters=True)  # los parámetros llevan PII
 
     @event.listens_for(engine, "connect")
     def _al_conectar(dbapi_conexion: Any, _registro: Any) -> None:

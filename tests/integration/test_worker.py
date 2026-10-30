@@ -269,8 +269,10 @@ def test_agotados_los_intentos_el_trabajo_falla_y_libera(ent: Entorno) -> None:
     for _ in range(MAX_INTENTOS):
         ent.reloj.avanzar(seconds=100)
         assert ent.worker.procesar_uno() is True
-    assert ent.trabajo().estado == "FALLIDA"
-    assert ent.trabajo().intentos == MAX_INTENTOS
+    with unidad_de_trabajo(ent.engine, escritura=False) as s:
+        crear, huerfano = s.scalars(select(ColaEscritura).order_by(ColaEscritura.id)).all()
+    assert (crear.estado, crear.intentos) == ("FALLIDA", MAX_INTENTOS)
+    assert huerfano.tipo_operacion == "ELIMINAR"  # por si algún intento sí creó el evento
     assert ent.reserva(r.id).estado == "FALLIDA"
     assert ent.bloques() == 0
     assert "ya no está libre" in ent.mensajeria.enviados[-1][1]
