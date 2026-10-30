@@ -759,7 +759,7 @@
   - Test: `make lint`
   - Hecho cuando: una persona no técnica puede seguir los pasos sin conocimientos de programación.
 
-- [ ] **TASK-50** · Redactar runbook y CHANGELOG
+- [x] **TASK-50** · Redactar runbook y CHANGELOG
   - Objetivo: operación de la cola, restauración de SQLite, canal expirado, cuota agotada.
   - Trazabilidad: NFR-DES-01 · Plan: 12.3
   - Diseño: design.md §B10.1
