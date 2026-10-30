@@ -11,6 +11,19 @@ cache_ttl_segundos: 60
 refresco_degradado_minutos: 5
 reserva_pendiente_expira_minutos: 10
 inactividad_reinicio_minutos: 30
+pausa_intervencion_humana_minutos: 120  # si la dueña responde a mano, el bot se calla este tiempo con esa clienta
+anti_ban:                           # protección de la línea de WhatsApp: no cambies sin saber
+  debounce_segundos: 4.5            # espera a que la clienta termine de escribir varios mensajes
+  lectura_min_ms: 1500
+  lectura_max_ms: 3000
+  escritura_ms_por_caracter: 45
+  escritura_min_ms: 2500
+  escritura_max_ms: 6000
+  jitter_min_ms: -400
+  jitter_max_ms: 600
+  max_mensajes_por_telefono: 15     # respuestas por clienta en la ventana
+  ventana_limite_minutos: 10
+  max_mensajes_globales: 120        # respuestas en total en la ventana
 llm_max_por_telefono_hora: 10       # consultas al LLM por clienta y hora (costo y abuso)
 llm_max_global_dia: 500             # consultas al LLM por día en total
 horario:                            # null = no se atiende ese día

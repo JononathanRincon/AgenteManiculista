@@ -55,6 +55,36 @@ class Domicilio(_Modelo):
         return self
 
 
+class AntiBan(_Modelo):
+    """Controles anti-bloqueo del transporte de WhatsApp (ADR-009)."""
+
+    debounce_segundos: float = Field(4.5, ge=0, le=30)
+    lectura_min_ms: int = Field(1500, ge=0)
+    lectura_max_ms: int = Field(3000, ge=0)
+    escritura_ms_por_caracter: int = Field(45, ge=0)
+    escritura_min_ms: int = Field(2500, ge=0)
+    escritura_max_ms: int = Field(6000, ge=0)
+    jitter_min_ms: int = -400
+    jitter_max_ms: int = 600
+    max_mensajes_por_telefono: int = Field(15, gt=0)
+    ventana_limite_minutos: int = Field(10, gt=0)
+    max_mensajes_globales: int = Field(120, gt=0)
+
+    @model_validator(mode="after")
+    def _rangos_coherentes(self) -> Self:
+        pares = (
+            ("lectura", self.lectura_min_ms, self.lectura_max_ms),
+            ("escritura", self.escritura_min_ms, self.escritura_max_ms),
+            ("jitter", self.jitter_min_ms, self.jitter_max_ms),
+        )
+        for nombre, minimo, maximo in pares:
+            if minimo > maximo:
+                raise ValueError(f"el mínimo de {nombre} no puede superar al máximo")
+        if self.max_mensajes_globales < self.max_mensajes_por_telefono:
+            raise ValueError("el tope global no puede ser menor que el de un teléfono")
+        return self
+
+
 class Ubicacion(_Modelo):
     texto: str
     mapa_url: str
@@ -73,6 +103,8 @@ class Negocio(_Modelo):
     refresco_degradado_minutos: int = Field(gt=0)
     reserva_pendiente_expira_minutos: int = Field(gt=0)
     inactividad_reinicio_minutos: int = Field(gt=0)
+    pausa_intervencion_humana_minutos: int = Field(120, gt=0)
+    anti_ban: AntiBan = Field(default_factory=lambda: AntiBan())
     llm_max_por_telefono_hora: int = Field(10, gt=0)
     llm_max_global_dia: int = Field(500, gt=0)
     horario: dict[str, Horario | None]

@@ -54,6 +54,7 @@ class Conversacion(Base):
     contexto: Mapped[str] = mapped_column(String, default="{}", server_default="{}")
     aviso_datos_aceptado: Mapped[bool] = mapped_column(default=False, server_default="0")
     actualizado_en: Mapped[datetime] = mapped_column(FechaUTC)
+    pausa_humana_hasta: Mapped[datetime | None] = mapped_column(FechaUTC, default=None)
 
 
 class MensajeProcesado(Base):
@@ -152,6 +153,28 @@ class EventoEspejo(Base):
     inicio: Mapped[datetime] = mapped_column(FechaUTC)
     fin: Mapped[datetime] = mapped_column(FechaUTC)
     estado: Mapped[str] = mapped_column(String)
+
+
+class OpcionesOfrecidas(Base):
+    """Último menú numerado enviado a cada teléfono (mapea "2" o el nombre al id ofrecido)."""
+
+    __tablename__ = "opciones_ofrecidas"
+    telefono: Mapped[str] = mapped_column(String, primary_key=True)
+    opciones: Mapped[str] = mapped_column(String)  # JSON: [{"id": ..., "titulo": ...}]
+    actualizado_en: Mapped[datetime] = mapped_column(FechaUTC)
+
+
+class EnvioReciente(Base):
+    """Cada mensaje enviado por el bot; sirve para el rate limit por teléfono y global."""
+
+    __tablename__ = "envios_recientes"
+    __table_args__ = (
+        Index("ix_envios_tel_en", "telefono", "enviado_en"),
+        Index("ix_envios_en", "enviado_en"),
+    )
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    telefono: Mapped[str] = mapped_column(String)
+    enviado_en: Mapped[datetime] = mapped_column(FechaUTC)
 
 
 class LlamadaLLM(Base):
