@@ -237,7 +237,7 @@ class Settings(BaseSettings):
     calendar_channel_token: SecretStr | None = None
     demo_retardo_calendario_s: Annotated[float, Field(ge=0, le=5)] = 0.0
 
-    @field_validator("sidecar_token", "webhook_secret", "admin_token")
+    @field_validator("sidecar_token", "webhook_secret", "admin_token", "calendar_channel_token")
     @classmethod
     def _secretos_largos(cls, valor: SecretStr | None) -> SecretStr | None:
         if valor is not None and len(valor.get_secret_value()) < MIN_SECRETO:
