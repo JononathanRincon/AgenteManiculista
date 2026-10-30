@@ -593,7 +593,7 @@
   - Test: `pytest tests/unit/test_humanizacion.py -q`
   - Hecho cuando: ningún envío sale en menos de 2,5 s (reloj de producción) y con `Dormir` nulo el retardo es 0.
 
-- [ ] **TASK-65** · Degradar botones y listas a menús numerados y mapear la respuesta
+- [x] **TASK-65** · Degradar botones y listas a menús numerados y mapear la respuesta
   - Objetivo: un solo texto numerado y la vuelta de "2" o del nombre al `id_interactivo` ofrecido.
   - Trazabilidad: US-03, EARS-WA-10, EARS-CON-05 · Plan: 10.6
   - Diseño: design.md §B8.2, §B8.4

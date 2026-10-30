@@ -77,6 +77,7 @@ CLAVES_REQUERIDAS: frozenset[str] = frozenset(
         "info_ubicacion",
         "faq_pagos",
         "faq_demora",
+        "menu_numerico_pie",
         "precio_formato",
         "hora_am",
         "hora_pm",

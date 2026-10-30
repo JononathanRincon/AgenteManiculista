@@ -93,6 +93,9 @@ info_ubicacion: "📍 {texto}\n{mapa_url}"
 faq_pagos: "Aceptamos efectivo y transferencia. Se paga al terminar el servicio."
 faq_demora: "Cada servicio tiene su duración; te la muestro al elegirlo. Llega unos minutos antes 😉"
 
+# --- Menús numéricos (WhatsApp con Baileys no garantiza botones nativos) ---
+menu_numerico_pie: "Responde con el número o el nombre de la opción 👆"
+
 # --- Formatos ---
 precio_formato: "${valor}"
 hora_am: "a. m."
