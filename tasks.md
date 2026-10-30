@@ -633,7 +633,7 @@
   - Test: `pytest tests/integration/test_webhook_whatsapp.py -q`
   - Hecho cuando: firma inválida o ausente da 403, grupos/difusión/canales se ignoran y con procesamiento lento el 200 llega en < 1 s.
 
-- [ ] **TASK-69** · Implementar el adaptador `MensajeriaBaileys` hacia el sidecar
+- [x] **TASK-69** · Implementar el adaptador `MensajeriaBaileys` hacia el sidecar
   - Objetivo: puerto `Mensajeria` sobre HTTP interno con token, reintentos con backoff y registro de ids emitidos.
   - Trazabilidad: US-03, EARS-WA-05, EARS-WA-09 · Plan: 10.6
   - Diseño: design.md §B8.2
