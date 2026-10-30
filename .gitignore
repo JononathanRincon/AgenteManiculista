@@ -38,3 +38,10 @@ Thumbs.db
 .claude/settings.local.json
 graphify-out/
 requirements-ci.txt
+
+# Sidecar de WhatsApp (Node.js): dependencias y, sobre todo, la sesión de Baileys (da control de la línea)
+sidecar/node_modules/
+baileys_auth/
+**/baileys_auth/
+sidecar/.env
+sidecar/.env.*

@@ -643,7 +643,7 @@
   - Test: `pytest tests/integration/test_mensajeria_baileys.py -q`
   - Hecho cuando: reintenta ante 5xx sin duplicar envíos y los ids emitidos permiten distinguir lo propio de lo humano.
 
-- [ ] **TASK-70** · Construir el sidecar Node.js con Baileys
+- [x] **TASK-70** · Construir el sidecar Node.js con Baileys
   - Objetivo: sesión persistente, reconexión con backoff, QR protegido y primitivas leer/presencia/enviar.
   - Trazabilidad: US-14, EARS-WA-11, 12, 13, 14, 17, EC-25 · Plan: 10.7
   - Diseño: design.md §B8.2, §B8.4 (⚠️ verificar la documentación de Baileys y la versión en npm)
