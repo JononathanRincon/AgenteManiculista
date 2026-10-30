@@ -176,7 +176,7 @@
   - Test: `pytest tests/unit/test_cache.py -q`
   - Hecho cuando: 10 consultas del mismo día producen 1 llamada al calendario.
 
-- [ ] **TASK-13** · Mantener el espejo de eventos con `syncToken` y resincronización ante 410
+- [x] **TASK-13** · Mantener el espejo de eventos con `syncToken` y resincronización ante 410
   - Objetivo: traer solo lo que cambió y recuperarse del token vencido.
   - Trazabilidad: US-08, EARS-CAC-05 · Plan: 5.2
   - Diseño: design.md §B3.2, §B3.4

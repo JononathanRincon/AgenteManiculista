@@ -12,8 +12,13 @@ from sqlalchemy import Engine, delete, select
 
 from app.config import Negocio
 from app.metricas import CACHE_HIT, CACHE_MISS, incrementar
-from app.modelos import CacheDisponibilidadFila, EventoEspejo, unidad_de_trabajo
-from app.puertos import Calendario, Reloj
+from app.modelos import (
+    CacheDisponibilidadFila,
+    CalendarioEstado,
+    EventoEspejo,
+    unidad_de_trabajo,
+)
+from app.puertos import Calendario, ErrorSyncTokenExpirado, Reloj
 
 
 def bloques_de_evento(inicio: datetime, fin: datetime, negocio: Negocio) -> list[datetime]:
@@ -87,21 +92,43 @@ class CacheDisponibilidad:
             return
         desde = ahora - timedelta(days=1)
         hasta = ahora + timedelta(days=self._negocio.ventana_maxima_dias + 2)
-        resultado = self._calendario.listar_eventos(
-            calendario_id, sync_token=None, desde=desde, hasta=hasta
-        )
+        with unidad_de_trabajo(self._engine, escritura=False) as s:
+            estado = s.get(CalendarioEstado, calendario_id)
+            token = estado.sync_token if estado is not None else None
+        try:
+            resultado = self._calendario.listar_eventos(
+                calendario_id, sync_token=token, desde=desde, hasta=hasta
+            )
+        except ErrorSyncTokenExpirado:  # 410: se descarta el espejo y se lista todo (EC-20)
+            resultado = self._calendario.listar_eventos(
+                calendario_id, sync_token=None, desde=desde, hasta=hasta
+            )
         with unidad_de_trabajo(self._engine) as s:
-            s.execute(delete(EventoEspejo).where(EventoEspejo.calendario_id == calendario_id))
+            if resultado.resincronizacion_completa:
+                s.execute(delete(EventoEspejo).where(EventoEspejo.calendario_id == calendario_id))
             for e in resultado.eventos:
-                s.add(
-                    EventoEspejo(
-                        calendario_id=calendario_id,
-                        event_id=e.event_id,
-                        inicio=e.inicio,
-                        fin=e.fin,
-                        estado="confirmed",
+                if e.cancelado:
+                    s.execute(
+                        delete(EventoEspejo).where(
+                            EventoEspejo.calendario_id == calendario_id,
+                            EventoEspejo.event_id == e.event_id,
+                        )
                     )
-                )
+                else:
+                    s.merge(
+                        EventoEspejo(
+                            calendario_id=calendario_id,
+                            event_id=e.event_id,
+                            inicio=e.inicio,
+                            fin=e.fin,
+                            estado="confirmed",
+                        )
+                    )
+            fila = s.get(CalendarioEstado, calendario_id)
+            if fila is None:
+                fila = CalendarioEstado(calendario_id=calendario_id)
+                s.add(fila)
+            fila.sync_token = resultado.nuevo_sync_token
         ttl = timedelta(seconds=self._negocio.cache_ttl_segundos)
         self._espejo_valido_hasta[calendario_id] = ahora + ttl
 
