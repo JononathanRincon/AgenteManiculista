@@ -425,7 +425,7 @@
   - Test: `pytest tests/e2e/test_simulador.py -q -k carrera`
   - Hecho cuando: la UI muestra una cita confirmada y un rechazo "horario ocupado".
 
-- [ ] **TASK-34** · Preparar la configuración de despliegue de la demo (sin desplegar)
+- [x] **TASK-34** · Preparar la configuración de despliegue de la demo (sin desplegar)
   - Objetivo: `render.yaml` con `SIMULADOR=true`, `PROVEEDOR_LLM=none`, una instancia y disco persistente.
   - Trazabilidad: US-12, NFR-DES-01 · Plan: 8.5
   - Diseño: design.md §5
