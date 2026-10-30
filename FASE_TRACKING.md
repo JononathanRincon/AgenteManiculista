@@ -152,6 +152,7 @@ los criterios de cierre. Antes de cerrar se reconcilia con `PLAN_IMPLEMENTACION.
 - [ ] ⏳ **11.1 Calendar real, push y modo degradado**
   - [ ] **Integración:** `test_calendario_google.py`, `test_push.py`, `test_modo_degradado.py`
   - Tareas: TASK-45 … TASK-47, TASK-60
+  - Tareas adicionales: TASK-73
   - Pruebas: pasadas <N> · fallidas 0 · cobertura ramas <N> % (medida)
   - Cierre: <fecha> · AI_PROCESS #<N>
 

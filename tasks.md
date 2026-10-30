@@ -716,6 +716,16 @@
   - Test: `make test`
   - Hecho cuando: verde y sin hallazgos críticos ni altos.
 
+- [ ] **TASK-73** · Cablear la producción en `crear_app` (Calendar real, agente, worker, WhatsApp y push)
+  - Objetivo: que `ENTORNO=produccion` construya todo el grafo de dependencias; hoy `/webhook/whatsapp` responde 500 sin `app.state.pasarela`.
+  - Trazabilidad: US-08, EARS-CAC-02, EARS-CAC-03, EARS-CAC-04, EARS-COL-03 · Plan: 11.5
+  - Diseño: design.md §B9.4, §B8, §5
+  - Skill: `/agent-skills:build`, `/agent-skills:test`
+  - Archivos: `app/main.py`, `app/produccion.py`, `tests/integration/test_produccion.py`
+  - Entregable: Calendar real, caché, agente, worker, limpieza, pasarela de WhatsApp, `/webhook/calendar` y la tarea del canal arrancan y se detienen limpiamente
+  - Test: `pytest tests/integration/test_produccion.py -q`
+  - Hecho cuando: con ajustes de producción simulados la pasarela, el worker y el canal existen, el webhook de Calendar invalida el caché y el cierre no deja tareas vivas.
+
 ## Bloque 10 — Documentación (Fase 12)
 *Skills:* `documentation-and-adrs`
 

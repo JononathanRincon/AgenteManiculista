@@ -143,6 +143,7 @@
 - [ ] **11.2** `events.watch`, `/webhook/calendar` y renovación
 - [ ] **11.3** Modo degradado
 - [ ] **11.4** Revisión del bloque
+- [ ] **11.5** Cableado de producción (TASK-73)
 
 ### Fase 12 — Documentación (Bloque 10)
 *Skills:* `documentation-and-adrs`
