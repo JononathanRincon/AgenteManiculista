@@ -1,0 +1,10 @@
+# Palabras clave por intención (sin tildes ni mayúsculas). Se evalúan en este orden: gana la primera
+# intención con coincidencia, así "cancelar mi cita" cancela y no agenda.
+intenciones:
+  reagendar: [reagendar, reprogramar, cambiar mi cita, cambiar la cita, mover mi cita, cambiar de hora, cambiar el dia]
+  cancelar: [cancelar, cancela, anular, anula, ya no puedo ir, no puedo asistir]
+  agendar: [agendar, agenda, agendo, cita, reservar, reserva, turno, apartar, separar]
+  consultar_precio: [precio, precios, cuanto vale, cuanto cuesta, costo, valor, tarifa, cuanto cobra, servicios]
+  consultar_horario: [horario, horarios, a que hora, hasta que hora, abren, abre, cierran, atienden, dias de atencion]
+  consultar_ubicacion: [ubicacion, direccion, donde queda, donde estan, donde atienden, como llego, mapa, ubicados]
+  saludo: [hola, buenas, buenos dias, buenas tardes, buenas noches, hey, saludos]

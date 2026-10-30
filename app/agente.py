@@ -16,7 +16,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.agenda import dias_con_cupo, horas_libres
 from app.cache import CacheDisponibilidad
-from app.config import Config, Modalidad, Servicio
+from app.config import DIAS, Config, Modalidad, Servicio
 from app.conversacion import (
     Contexto,
     Entrante,
@@ -26,7 +26,8 @@ from app.conversacion import (
     cargar_sesion,
     guardar_sesion,
 )
-from app.formato import fecha, fecha_corta, hora, precio
+from app.formato import fecha, fecha_corta, hora, hora_reloj, precio
+from app.intencion import Reglas, cargar_reglas, resolver_faq, resolver_por_palabras_clave
 from app.mensajes import texto
 from app.modelos import MensajeProcesado, Reserva, unidad_de_trabajo
 from app.puertos import Opcion, Reloj
@@ -64,12 +65,14 @@ class Agente:
         cache: CacheDisponibilidad,
         reloj: Reloj,
         atajo: Atajo | None = None,
+        reglas: Reglas | None = None,
     ) -> None:
         self._engine = engine
         self._config = config
         self._cache = cache
         self._reloj = reloj
         self._atajo = atajo
+        self._reglas = reglas or cargar_reglas()
         self._cal = config.negocio.calendario_id
 
     # --- punto de entrada ---
@@ -106,10 +109,10 @@ class Agente:
         if entrada is None and e.texto is not None:
             if ctx.esperando_direccion:
                 return self._recibir_direccion(e.texto, ctx, ahora)
-            atajo = self._atajo(e.texto) if self._atajo is not None else None
-            if isinstance(atajo, list):
-                return atajo
-            entrada = atajo
+            respuesta = self._interpretar(e.texto)
+            if isinstance(respuesta, list):
+                return respuesta
+            entrada = respuesta
         if entrada is None:
             return self._reofrecer(ctx, e, ahora, desconocido=ctx.estado != Estado.INICIO)
         manejador = self._manejador(entrada)
@@ -117,12 +120,32 @@ class Agente:
             return self._reofrecer(ctx, e, ahora, desconocido=True)
         return manejador(entrada, e, ctx, ahora)
 
+    def _interpretar(self, mensaje: str) -> list[Saliente] | str | None:
+        """FAQ y palabras clave primero (sin LLM); si no hay coincidencia, el gancho opcional."""
+        faq = resolver_faq(mensaje, self._reglas)
+        if faq is not None:
+            return [Saliente("texto", texto(faq))]
+        intencion = resolver_por_palabras_clave(mensaje, self._reglas)
+        if intencion is not None:
+            respuestas: dict[str, list[Saliente] | str] = {
+                "agendar": "menu:agendar",
+                "reagendar": "menu:gestionar",
+                "cancelar": "menu:gestionar",
+                "saludo": "saludo:hola",
+                "consultar_precio": [Saliente("texto", self._texto_servicios())],
+                "consultar_horario": [Saliente("texto", self._texto_horario())],
+                "consultar_ubicacion": [Saliente("texto", self._texto_ubicacion())],
+            }
+            return respuestas[intencion]
+        return self._atajo(mensaje) if self._atajo is not None else None
+
     def _manejador(
         self, entrada: str
     ) -> Callable[[str, Entrante, Contexto, datetime], list[Saliente]] | None:
         prefijo = entrada.split(":", 1)[0]
         return {
             "menu": self._on_menu,
+            "saludo": self._on_saludo,
             "srv": self._on_servicio,
             "mod": self._on_modalidad,
             "dia": self._on_dia,
@@ -176,6 +199,30 @@ class Agente:
         if entrada == "menu:consultar":
             return [Saliente("texto", self._texto_servicios()), *self._menu(ctx)]
         return self._reofrecer(ctx, e, ahora, desconocido=True)
+
+    def _on_saludo(
+        self, entrada: str, e: Entrante, ctx: Contexto, ahora: datetime
+    ) -> list[Saliente]:
+        return self._bienvenida(e, ctx)
+
+    def _texto_horario(self) -> str:
+        lineas = []
+        for indice, nombre in enumerate(DIAS):
+            horario = self._config.negocio.horario.get(nombre)
+            if horario is not None:
+                lineas.append(
+                    texto(
+                        "info_horario_linea",
+                        dia=texto(f"dia_{indice}").capitalize(),
+                        abre=hora_reloj(horario.abre),
+                        cierra=hora_reloj(horario.cierra),
+                    )
+                )
+        return texto("info_horario", horario="\n".join(lineas))
+
+    def _texto_ubicacion(self) -> str:
+        ubicacion = self._config.negocio.ubicacion
+        return texto("info_ubicacion", texto=ubicacion.texto, mapa_url=ubicacion.mapa_url)
 
     def _texto_servicios(self) -> str:
         lineas = [texto("info_servicios_encabezado")]

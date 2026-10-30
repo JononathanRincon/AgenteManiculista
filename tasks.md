@@ -342,7 +342,7 @@
   - Test: `pytest tests/unit/test_gestion.py -q`
   - Hecho cuando: la clienta solo ve y modifica sus propias citas.
 
-- [ ] **TASK-27** · Resolver palabras clave e intenciones fijas y FAQ sin LLM
+- [x] **TASK-27** · Resolver palabras clave e intenciones fijas y FAQ sin LLM
   - Objetivo: saludos, precio, ubicación, horario, cancelar y FAQ por palabras clave.
   - Trazabilidad: US-01, EARS-INT-01, EARS-CON-08 · Plan: 7.5
   - Diseño: design.md §B5.4, §B7.1
