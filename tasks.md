@@ -583,7 +583,7 @@
   - Test: `pytest tests/unit/test_config.py tests/integration/test_modelos.py -q`
   - Hecho cuando: valores fuera de rango impiden el arranque y las tablas se crean con sus claves.
 
-- [ ] **TASK-64** · Implementar la humanización de envíos (leído, escribiendo, pausa, envío único)
+- [x] **TASK-64** · Implementar la humanización de envíos (leído, escribiendo, pausa, envío único)
   - Objetivo: tiempos de lectura y escritura con jitter y la secuencia leer → composing → espera → paused → enviar con `Dormir` inyectable.
   - Trazabilidad: US-14, EARS-WA-06, 07, 08, 09, NFR-ANT-01 · Plan: 10.6
   - Diseño: design.md §B8.2, §B8.4
