@@ -653,7 +653,7 @@
   - Test: `cd sidecar && node --test`
   - Hecho cuando: el backoff es 2·4·8·16·60 s con jitter, `loggedOut` no reconecta y alerta, y el sidecar solo informa `fromMe` no emitidos por él.
 
-- [ ] **TASK-71** · Dockerizar el sidecar y agregarlo a compose y CI
+- [x] **TASK-71** · Dockerizar el sidecar y agregarlo a compose y CI
   - Objetivo: segundo contenedor no root con volumen `/data/baileys_auth` y verificación en CI.
   - Trazabilidad: NFR-DES-01, NFR-SEG-02 · Plan: 10.7
   - Diseño: design.md §5

@@ -16,3 +16,4 @@ tests/
 docs/
 *.md
 requirements-ci.txt
+sidecar/

@@ -71,6 +71,7 @@ test('arranque: credenciales persistentes, versión vigente y huella coherente',
   assert.equal(c.syncFullHistory, false);
   assert.equal(c.markOnlineOnConnect, false);
   assert.equal(c.printQRInTerminal, false);
+  assert.equal('logger' in c, false); // por defecto se usa el de Baileys
   t.ev.emit('creds.update', {});
   await new Promise((r) => setImmediate(r));
   assert.equal(t.llamadas.creds, 1); // las credenciales se guardan en disco
@@ -237,4 +238,11 @@ test('un envío sin id de mensaje es un error y no se recuerda', async () => {
   assert.equal(t.conexion.emitidos.idDeClave('k'), null);
   t.sock.sendMessage = async () => ({ key: { id: 'OK-1' } }); // la cola sigue funcionando
   assert.equal(await t.conexion.enviar(JID, 'x', 'k2'), 'OK-1');
+});
+
+test('se puede entregar un logger propio a Baileys (nivel warn en producción)', async () => {
+  const silencioso = { level: 'warn' };
+  const t = montar({ loggerBaileys: silencioso });
+  await t.conexion.iniciar();
+  assert.equal(t.llamadas.configs[0].logger, silencioso);
 });

@@ -22,6 +22,7 @@ export class Conexion {
     ahora = Date.now,
     mostrarQr = (qr) => qrcodeTerminal.generate(qr, { small: true }),
     emitidos = new Emitidos(),
+    loggerBaileys = undefined,
   }) {
     this.baileys = baileys;
     this.authDir = authDir;
@@ -32,6 +33,7 @@ export class Conexion {
     this.ahora = ahora;
     this.mostrarQr = mostrarQr;
     this.emitidos = emitidos;
+    this.loggerBaileys = loggerBaileys;
     this.sock = null;
     this.conexion = 'connecting';
     this.intentos = 0;
@@ -50,6 +52,7 @@ export class Conexion {
       syncFullHistory: false, // no descarga ni dispara tráfico masivo al vincular
       markOnlineOnConnect: false, // no figura "en línea" y deja las notificaciones al celular
       printQRInTerminal: false, // el QR se maneja en connection.update
+      ...(this.loggerBaileys ? { logger: this.loggerBaileys } : {}), // sin trazas de protocolo
     });
     this.sock = sock;
     sock.ev.on('creds.update', saveCreds);

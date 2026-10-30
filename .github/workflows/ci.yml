@@ -38,17 +38,45 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+  sidecar:
+    name: Sidecar de WhatsApp (pruebas y auditoría)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sidecar
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: sidecar/package-lock.json
+      - run: npm ci --no-fund
+      - name: Pruebas del sidecar
+        run: npm test
+      - name: Auditoría de dependencias de producción
+        run: npm audit --omit=dev --audit-level=high
+
   imagen:
-    name: Build de imagen y escaneo
+    name: Build de imágenes y escaneo
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Construir imagen
+      - name: Construir imagen del backend
         run: docker build -t agente-manicurista:ci .
-      - name: Escanear imagen (Trivy)
+      - name: Construir imagen del sidecar
+        run: docker build -t agente-manicurista-sidecar:ci sidecar
+      - name: Escanear imagen del backend (Trivy)
         uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: agente-manicurista:ci
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: Escanear imagen del sidecar (Trivy)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: agente-manicurista-sidecar:ci
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true

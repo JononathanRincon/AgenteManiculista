@@ -1,4 +1,5 @@
 import * as baileysModulo from '@whiskeysockets/baileys';
+import pino from 'pino';
 import { Conexion } from './conexion.js';
 import { crearEmisorEventos } from './eventos.js';
 import { crearServidor } from './servidor.js';
@@ -37,6 +38,8 @@ const conexion = new Conexion({
   authDir: process.env.AUTH_DIR ?? '/data/baileys_auth',
   enviarEvento,
   log,
+  // Baileys en nivel warn: sus trazas de nivel info incluyen detalles del protocolo
+  loggerBaileys: pino({ level: 'warn' }),
 });
 const servidor = crearServidor({ conexion, token, log });
 
