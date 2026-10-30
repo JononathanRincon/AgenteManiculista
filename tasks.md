@@ -123,7 +123,7 @@
 ## Bloque 2 — Disponibilidad (Fase 4)
 *Skills:* `incremental-implementation`, `test-driven-development`, `api-and-interface-design`
 
-- [ ] **TASK-09** · Calcular la cuadrícula y los bloques ocupados por servicio
+- [x] **TASK-09** · Calcular la cuadrícula y los bloques ocupados por servicio
   - Objetivo: `bloques_ocupados` con duración + margen + desplazamiento redondeado a bloques.
   - Trazabilidad: US-02, EARS-DIS-02, EARS-DOM-01 · Plan: 4.1
   - Diseño: design.md §2.3, §B2.2, §B2.4
@@ -133,7 +133,7 @@
   - Test: `pytest tests/unit/test_disponibilidad.py -q -k bloques`
   - Hecho cuando: 45→2, 75→3, 150→6, 30→2 con margen 15 y el desplazamiento suma bloques.
 
-- [ ] **TASK-10** · Calcular horarios ofrecibles (máx. 10)
+- [x] **TASK-10** · Calcular horarios ofrecibles (máx. 10)
   - Objetivo: respetar apertura/cierre, anticipación, ventana, días laborales y ocupación.
   - Trazabilidad: US-02, EARS-DIS-01, EARS-DIS-03, EARS-DIS-04 · Plan: 4.2
   - Diseño: design.md §B2.2, §B2.4
