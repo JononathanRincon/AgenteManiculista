@@ -80,7 +80,7 @@
   - Test: `pytest tests/unit/test_config.py -q`
   - Hecho cuando: YAML inválido o domicilio sin recargo impiden el arranque con mensaje claro.
 
-- [ ] **TASK-06** · Definir `Settings` de entorno y `.env.example` completo
+- [x] **TASK-06** · Definir `Settings` de entorno y `.env.example` completo
   - Objetivo: variables validadas (`PROVEEDOR_LLM`, `SIMULADOR`, `GEMINI_TIER`, etc.) y documentadas.
   - Trazabilidad: NFR-SEG-02, EARS-INT-05 · Plan: 3.2
   - Diseño: design.md §5 (variables), §B1.2
