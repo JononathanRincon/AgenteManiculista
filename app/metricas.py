@@ -36,3 +36,9 @@ def tasa_acierto_cache(sesion: Session) -> float:
     hits, misses = leer(sesion, CACHE_HIT), leer(sesion, CACHE_MISS)
     total = hits + misses
     return hits / total if total else 0.0
+
+
+def porcentaje_sin_llm(sesion: Session) -> float:
+    """% de mensajes resueltos sin que el LLM aportara la interpretación (EARS-INT-06)."""
+    total = leer(sesion, MENSAJES_TOTAL)
+    return 100.0 * leer(sesion, MENSAJES_SIN_LLM) / total if total else 0.0

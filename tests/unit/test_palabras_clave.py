@@ -1,12 +1,20 @@
 """Palabras clave, intenciones fijas y FAQ sin LLM (EARS-INT-01, EARS-CON-08)."""
 
+from datetime import date
 from pathlib import Path
 
 import pytest
 import yaml
 from app.config import Config, ConfiguracionInvalida
 from app.conversacion import Saliente
-from app.intencion import cargar_reglas, normalizar, resolver_faq, resolver_por_palabras_clave
+from app.intencion import (
+    Intencion,
+    cargar_reglas,
+    normalizar,
+    resolver_faq,
+    resolver_por_palabras_clave,
+)
+from app.llm.base import ServicioResumen
 from app.mensajes import cargar_mensajes
 from sqlalchemy import Engine
 
@@ -82,33 +90,41 @@ def test_yaml_invalido_falla_al_cargar(tmp_path: Path) -> None:
         cargar_reglas(_con_yaml(tmp_path, bueno, faq), cargar_mensajes())
 
 
+class ProveedorEspia:
+    """Proveedor de lenguaje que anota lo que recibe y no entiende nada."""
+
+    def __init__(self) -> None:
+        self.recibidos: list[str] = []
+
+    def interpretar(
+        self, texto: str, catalogo: list[ServicioResumen], hoy: date, estado: str
+    ) -> Intencion | None:
+        self.recibidos.append(texto)
+        return None
+
+
 def test_precio_y_ubicacion_se_resuelven_sin_invocar_al_proveedor(
     engine: Engine, cfg: Config
 ) -> None:
-    llamadas: list[str] = []
-
-    def proveedor(texto: str) -> str | None:
-        llamadas.append(texto)
-        return None
-
-    chat = Chat(engine, cfg, atajo=proveedor)
+    proveedor = ProveedorEspia()
+    chat = Chat(engine, cfg, proveedor=proveedor)
     chat.acepta_aviso()
     assert "$30.000" in chat.escribe("cuánto vale el manicure")[0].cuerpo
     assert "Calle 00" in chat.escribe("dónde queda")[0].cuerpo
     assert "Lunes: 8:00 a. m. a 6:00 p. m." in chat.escribe("a qué hora abren")[0].cuerpo
     assert "Domingo" not in chat.cuerpos()
     assert "efectivo y transferencia" in chat.escribe("puedo pagar con nequi")[0].cuerpo
-    assert llamadas == []
+    assert proveedor.recibidos == []
 
 
 def test_lo_que_no_coincide_llega_al_proveedor_y_sin_el_cae_al_menu(
     engine: Engine, cfg: Config
 ) -> None:
-    recibido: list[str] = []
-    chat = Chat(engine, cfg, atajo=lambda t: recibido.append(t))
+    proveedor = ProveedorEspia()
+    chat = Chat(engine, cfg, proveedor=proveedor)
     chat.acepta_aviso()
     salida = chat.escribe("blablabla quiero algo raro")
-    assert recibido == ["blablabla quiero algo raro"]
+    assert proveedor.recibidos == ["blablabla quiero algo raro"]
     assert "No te entendí" in salida[0].cuerpo
     assert chat.ids()[0] == "menu:agendar"
 

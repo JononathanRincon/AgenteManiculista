@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from app.agente import Agente, Atajo
+from app.agente import Agente
 from app.cache import CacheDisponibilidad
 from app.config import Config
 from app.conversacion import Entrante, Saliente
+from app.llm.base import ProveedorLLM
 from app.mensajes import configurar
 from app.reloj import RelojFalso
 from app.simulador.calendario_falso import CalendarioFalso
@@ -26,14 +27,14 @@ class Chat:
         nombre: str | None = "María Pérez",
         calendario: CalendarioFalso | None = None,
         reloj: RelojFalso | None = None,
-        atajo: Atajo | None = None,
+        proveedor: ProveedorLLM | None = None,
     ) -> None:
         configurar(None)
         self.engine, self.config = engine, config
         self.calendario = calendario or CalendarioFalso()
         self.reloj = reloj or RelojFalso(AHORA)
         self.cache = CacheDisponibilidad(engine, self.calendario, config.negocio, self.reloj)
-        self.agente = Agente(engine, config, self.cache, self.reloj, atajo=atajo)
+        self.agente = Agente(engine, config, self.cache, self.reloj, proveedor=proveedor)
         self.telefono, self.nombre = telefono, nombre
         self.n = 0
         self.ultimo: list[Saliente] = []
