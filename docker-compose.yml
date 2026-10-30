@@ -1,5 +1,11 @@
-# Entorno de desarrollo. Una sola instancia y un solo proceso.
+# Entorno de desarrollo. Una sola instancia y un solo proceso por servicio.
 # Los secretos se inyectan por entorno (archivo .env local, nunca versionado).
+#
+# `app` (FastAPI) arranca en modo demo por defecto. Para WhatsApp real:
+#   1) completa en .env SIDECAR_TOKEN, WEBHOOK_SECRET y ADMIN_TOKEN (valores largos y al azar);
+#   2) docker compose --profile whatsapp up --build
+#   3) abre el QR en http://localhost:8000/admin/whatsapp/qr (cabecera X-Admin-Token) o en los logs
+#      del sidecar y vincula el celular desde WhatsApp > Dispositivos vinculados.
 services:
   app:
     build: .
@@ -12,8 +18,28 @@ services:
       SIMULADOR: "true"
       PROVEEDOR_LLM: "none"
       DATABASE_URL: "sqlite:////data/agenda.db"
+      SIDECAR_URL: "http://sidecar:3000"
     volumes:
       - agenda_data:/data
 
+  sidecar:
+    profiles: ["whatsapp"]
+    build: ./sidecar
+    # Solo accesible desde la red de compose: nunca se publica un puerto al exterior.
+    expose:
+      - "3000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      BACKEND_WEBHOOK_URL: "http://app:8000/webhook/whatsapp"
+      AUTH_DIR: "/data/baileys_auth"
+    volumes:
+      - baileys_auth:/data/baileys_auth
+    depends_on:
+      - app
+    restart: unless-stopped
+
 volumes:
   agenda_data:
+  baileys_auth:

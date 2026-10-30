@@ -3,7 +3,7 @@
 UV ?= uv
 PY ?= $(if $(wildcard .venv/Scripts/python.exe),.venv/Scripts/python,.venv/bin/python)
 
-.PHONY: install run test lint ci
+.PHONY: install run test lint ci sidecar-test
 
 install:  ## Crea el venv con Python 3.12 y sincroniza dependencias (lockfile)
 	$(UV) sync --python 3.12
@@ -18,6 +18,9 @@ lint:  ## Lint, formato y tipos estrictos
 	$(PY) -m ruff check .
 	$(PY) -m ruff format --check .
 	$(PY) -m mypy
+
+sidecar-test:  ## Pruebas del sidecar de WhatsApp (Node.js 22)
+	cd sidecar && npm ci --no-audit --no-fund && npm test
 
 ci: lint test  ## Lo mismo que corre el pipeline
 	$(UV) export --no-hashes --no-emit-project -o requirements-ci.txt
