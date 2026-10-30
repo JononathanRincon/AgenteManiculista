@@ -1,0 +1,142 @@
+# Todo el texto que ve la clienta. Español colombiano, tuteando. Las {variables} no se tocan.
+# Límites de WhatsApp: botones y botón de lista hasta 20 caracteres, títulos de fila hasta 24.
+
+# --- Aviso de tratamiento de datos (Ley 1581 de 2012) ---
+# BORRADOR: pendiente de revisión legal antes de salir a producción (PA-07).
+aviso_datos: >-
+  Hola 👋 Soy la asistente de agenda de {negocio}. Para agendar tu cita necesito tu número de
+  WhatsApp y el nombre de tu perfil (y tu dirección si pides domicilio). Los uso solo para
+  gestionar tus citas, según la Ley 1581 de 2012, y puedes pedir que los borre cuando quieras.
+  ¿Aceptas?
+boton_acepto: "Acepto"
+boton_no_acepto: "No acepto"
+aviso_rechazado: >-
+  Entendido, no guardaré tus datos. Si cambias de opinión, escríbeme de nuevo cuando quieras.
+
+# --- Menú ---
+bienvenida: "¡Hola{nombre}! 💅 ¿En qué te puedo ayudar?"
+menu_cuerpo: "Elige una opción:"
+menu_agendar: "Agendar cita"
+menu_consultar: "Ver servicios"
+menu_gestionar: "Mis citas"
+no_entendi: "No te entendí del todo 🙈. Elige una opción:"
+no_texto: "Por ahora solo entiendo mensajes de texto 🙂. Elige una opción:"
+error_generico: "Tuve un problema técnico. Intenta de nuevo en un momento, por favor 🙏"
+
+# --- Agendar ---
+servicios_cuerpo: "¿Qué servicio quieres?"
+servicios_boton: "Ver servicios"
+servicio_fila_desc: "{duracion} min · {precio}"
+modalidad_cuerpo: "¿Dónde prefieres la atención?"
+modalidad_local: "En el local"
+modalidad_domicilio: "A domicilio"
+direccion_pedir: "Escríbeme la dirección a la que debo ir (barrio y dirección completa)."
+direccion_fuera_zona: >-
+  Lo siento, por ahora solo atiendo a domicilio en: {zonas}. ¿Prefieres atenderte en el local?
+dia_cuerpo: "¿Para qué día?"
+dia_boton: "Ver días"
+dia_sin_horarios: "No tengo horarios libres en los próximos días. Escríbeme más adelante 🙏"
+hora_cuerpo: "Estos son los horarios libres del {dia}:"
+hora_boton: "Ver horarios"
+hora_sin_horarios: "Ya no quedan horarios libres ese día. Elige otro día:"
+resumen_local: |-
+  Resumen de tu cita:
+  💅 {servicio}
+  📅 {fecha}, {hora}
+  📍 {ubicacion}
+  💵 {total}
+  ¿Confirmas?
+resumen_domicilio: |-
+  Resumen de tu cita:
+  💅 {servicio}
+  📅 {fecha}, {hora}
+  🏠 A domicilio: {direccion}
+  💵 Servicio {precio} + domicilio {recargo} = Total {total}
+  ¿Confirmas?
+boton_confirmar: "Confirmar"
+boton_cambiar: "Cambiar"
+cita_apartada: "Listo, te aparté el horario ⏳. Estoy confirmándolo en la agenda, un momento…"
+cita_confirmada: "✅ ¡Cita confirmada! {servicio}, {fecha} a las {hora}. ¡Te esperamos!"
+cita_confirmada_domicilio: >-
+  ✅ ¡Cita confirmada! {servicio}, {fecha} a las {hora}, a domicilio en {direccion}.
+horario_ocupado: "Ese horario se acaba de ocupar 😕. Mira estas otras opciones:"
+cita_fallida: >-
+  No pude confirmar tu cita porque el horario ya no está libre. Tu horario quedó liberado; escríbeme
+  y buscamos otro 🙏
+cita_expirada: "Tu reserva venció porque no se alcanzó a confirmar. Escríbeme y la hacemos de nuevo 🙏"
+limite_citas: >-
+  Ya tienes {maximo} citas próximas. Puedes reagendar o cancelar una de ellas:
+
+# --- Mis citas ---
+gestion_sin_citas: "No tienes citas próximas. ¿Quieres agendar una?"
+gestion_elegir: "Estas son tus citas próximas. Elige una:"
+gestion_boton: "Ver mis citas"
+gestion_fila_desc: "{servicio} · {hora}"
+gestion_acciones: "¿Qué quieres hacer con tu cita del {fecha} a las {hora}?"
+boton_reagendar: "Reagendar"
+boton_cancelar: "Cancelar cita"
+cancelar_confirmar: "¿Seguro que quieres cancelar tu cita del {fecha} a las {hora}?"
+boton_si_cancelar: "Sí, cancelar"
+boton_no_volver: "No, volver"
+cancelacion_ok: "Listo, cancelé tu cita del {fecha}. ¡Cuando quieras agendamos otra!"
+reagendar_ok: "✅ Reagendada: tu nueva cita es el {fecha} a las {hora}."
+reagendar_fallo: "No pude reagendar. Tu cita original sigue igual 👍"
+
+# --- Información (palabras clave y preguntas frecuentes) ---
+info_servicios_encabezado: "Estos son mis servicios:"
+info_servicio_linea: "• {nombre}: {precio} ({duracion} min)"
+info_domicilio: "🏠 También atiendo a domicilio (recargo {recargo})."
+info_horario: "🕗 Mi horario:\n{horario}"
+info_horario_linea: "• {dia}: {abre} a {cierra}"
+info_ubicacion: "📍 {texto}\n{mapa_url}"
+faq_pagos: "Aceptamos efectivo y transferencia. Se paga al terminar el servicio."
+faq_demora: "Cada servicio tiene su duración; te la muestro al elegirlo. Llega unos minutos antes 😉"
+
+# --- Formatos ---
+precio_formato: "${valor}"
+hora_am: "a. m."
+hora_pm: "p. m."
+dia_0: "lunes"
+dia_1: "martes"
+dia_2: "miércoles"
+dia_3: "jueves"
+dia_4: "viernes"
+dia_5: "sábado"
+dia_6: "domingo"
+dia_abrev_0: "Lun"
+dia_abrev_1: "Mar"
+dia_abrev_2: "Mié"
+dia_abrev_3: "Jue"
+dia_abrev_4: "Vie"
+dia_abrev_5: "Sáb"
+dia_abrev_6: "Dom"
+mes_1: "enero"
+mes_2: "febrero"
+mes_3: "marzo"
+mes_4: "abril"
+mes_5: "mayo"
+mes_6: "junio"
+mes_7: "julio"
+mes_8: "agosto"
+mes_9: "septiembre"
+mes_10: "octubre"
+mes_11: "noviembre"
+mes_12: "diciembre"
+mes_abrev_1: "ene"
+mes_abrev_2: "feb"
+mes_abrev_3: "mar"
+mes_abrev_4: "abr"
+mes_abrev_5: "may"
+mes_abrev_6: "jun"
+mes_abrev_7: "jul"
+mes_abrev_8: "ago"
+mes_abrev_9: "sep"
+mes_abrev_10: "oct"
+mes_abrev_11: "nov"
+mes_abrev_12: "dic"
+
+# --- Simulador y evento de Calendar ---
+evento_titulo: "{servicio} · {nombre}"
+evento_descripcion: "Cliente: {nombre}\nTeléfono: {telefono}\nModalidad: {modalidad}{extra}"
+evento_extra_domicilio: "\nDirección: {direccion}\nRecargo domicilio: {recargo}"
+nombre_negocio: "tu manicurista"

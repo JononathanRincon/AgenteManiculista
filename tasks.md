@@ -100,7 +100,7 @@
   - Test: `pytest tests/integration/test_modelos.py -q`
   - Hecho cuando: PRAGMAs activos y una segunda escritura espera mientras otra tiene `BEGIN IMMEDIATE`.
 
-- [ ] **TASK-08** · Externalizar mensajes en `mensajes.yaml` y renderizador
+- [x] **TASK-08** · Externalizar mensajes en `mensajes.yaml` y renderizador
   - Objetivo: todo texto visible desde YAML, validado al arrancar.
   - Trazabilidad: NFR-MNT-01, EARS-CFG-01 · Plan: 3.4
   - Diseño: design.md §1.2, §B1.1, §B1.4
