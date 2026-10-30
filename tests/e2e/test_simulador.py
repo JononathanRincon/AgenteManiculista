@@ -125,3 +125,47 @@ async def test_rutas_flujo_de_eventos_emite_cambio_y_latido(cliente: TestClient)
     assert mensaje.startswith("event: cambio")
     await flujo.aclose()
     assert demo._oyentes == []  # noqa: SLF001 - el flujo se desuscribe al cerrarse
+
+
+def test_ui_sirve_los_archivos_estaticos(cliente: TestClient) -> None:
+    for ruta, tipo in (
+        ("/demo/static/app.js", "javascript"),
+        ("/demo/static/estilos.css", "css"),
+    ):
+        r = cliente.get(ruta)
+        assert r.status_code == 200
+        assert tipo in r.headers["content-type"]
+        assert "default-src 'self'" in r.headers["content-security-policy"]
+    assert cliente.get("/demo/static/../../config/negocio.yaml").status_code in (404, 400)
+    assert cliente.get("/demo/static/no_existe.js").status_code == 404
+
+
+def test_ui_cumple_la_politica_de_contenido_y_la_accesibilidad(cliente: TestClient) -> None:
+    html = cliente.get("/demo").text
+    assert 'lang="es"' in html
+    assert 'name="viewport"' in html
+    assert "<script src=" in html and "<script>" not in html  # CSP: sin scripts en línea
+    assert " style=" not in html and "<style" not in html  # CSP: sin estilos en línea
+    assert 'role="log"' in html
+    assert 'aria-live="polite"' in html
+    for texto in ("Dos confirmaciones simultáneas", "Reiniciar", "datos de ejemplo"):
+        assert texto in html
+
+
+def test_ui_los_ids_que_usa_el_javascript_existen_en_el_html(cliente: TestClient) -> None:
+    import re
+
+    html = cliente.get("/demo").text
+    js = cliente.get("/demo/static/app.js").text
+    usados = set(re.findall(r'el\("([a-z-]+)"\)', js))
+    assert usados
+    for identificador in usados:
+        assert f'id="{identificador}"' in html, identificador
+
+
+def test_ui_objetivos_tactiles_de_44_px_y_diseno_vertical(cliente: TestClient) -> None:
+    css = cliente.get("/demo/static/estilos.css").text
+    assert css.count("min-height: 44px") >= 3
+    assert "max-aspect-ratio: 1/1" in css
+    assert "prefers-reduced-motion" in css
+    assert "prefers-color-scheme: dark" in css

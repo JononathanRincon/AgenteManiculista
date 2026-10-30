@@ -405,7 +405,7 @@
   - Test: `pytest tests/e2e/test_simulador.py -q -k rutas`
   - Hecho cuando: las rutas no existen sin `SIMULADOR=true` y existen con él.
 
-- [ ] **TASK-32** · Construir la interfaz `/demo` en formato vertical presentable
+- [x] **TASK-32** · Construir la interfaz `/demo` en formato vertical presentable
   - Objetivo: chat tipo WhatsApp a la izquierda y calendario en vivo a la derecha, apto para grabar en vertical.
   - Trazabilidad: US-12, EARS-SIM-03 · Plan: 8.3
   - Diseño: design.md §B6.4

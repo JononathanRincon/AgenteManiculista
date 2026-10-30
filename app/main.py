@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
+from fastapi.staticfiles import StaticFiles
 
 from app.config import Config, Settings, cargar_config
 from app.limite_tasa import LimiteTasa
@@ -16,7 +17,7 @@ from app.mensajes import cargar_mensajes, configurar
 from app.modelos import crear_engine, crear_tablas
 from app.puertos import Reloj
 from app.simulador.demo import Demo
-from app.simulador.rutas import crear_router
+from app.simulador.rutas import ESTATICOS, crear_router
 
 DIRECTORIO_CONFIG = Path(__file__).resolve().parents[1] / "config"
 CABECERAS_DEMO = {
@@ -91,6 +92,7 @@ def crear_app(
     if ajustes.simulador:
         app.state.limite_demo = LimiteTasa(maximo=300, ventana_s=60)
         app.include_router(crear_router())
+        app.mount("/demo/static", StaticFiles(directory=ESTATICOS), name="demo-static")
 
         @app.middleware("http")
         async def cabeceras_demo(
