@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import math
 import random
 from collections.abc import Callable
 from datetime import datetime, timedelta
@@ -239,7 +240,8 @@ class Worker:
         if trabajo.intentos >= MAX_INTENTOS:
             self._fallo_definitivo(trabajo, f"agotó {MAX_INTENTOS} intentos: {error}")
             return
-        proxima = ahora + timedelta(seconds=espera_backoff(trabajo.intentos, self._jitter()))
+        espera = espera_backoff(trabajo.intentos, self._jitter())
+        proxima = ahora + timedelta(seconds=math.ceil(espera))  # las fechas se guardan al segundo
         if isinstance(error, CuotaExcedida):
             cola.pausar(self._engine, self._cal_id, proxima)
             log.warning("cola_pausada", extra={"hasta": proxima.isoformat()})

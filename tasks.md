@@ -239,7 +239,7 @@
   - Test: `pytest tests/integration/test_worker.py -q -k crear`
   - Hecho cuando: evento manual en el hueco libera la reserva; el reintento tras caída no duplica.
 
-- [ ] **TASK-18** · Añadir backoff con jitter, límite de intentos y pausa por cuota
+- [x] **TASK-18** · Añadir backoff con jitter, límite de intentos y pausa por cuota
   - Objetivo: reintentos hasta 5, tope 64 s, pausa de cola ante 403/429 con `usageLimits`.
   - Trazabilidad: US-07, EARS-COL-03, EARS-COL-04, EARS-RES-05, EC-05 · Plan: 6.3
   - Diseño: design.md §1.3, §B4.4

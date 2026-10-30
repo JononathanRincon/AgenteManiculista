@@ -5,14 +5,15 @@ from datetime import timedelta
 from typing import Any
 
 import pytest
-from app.cola import encolar, fallidos
+from app.cola import encolar, fallidos, pausada_hasta
 from app.config import Config
 from app.mensajes import configurar
 from app.modelos import ColaEscritura, Conversacion, Reserva, ReservaBloque, unidad_de_trabajo
+from app.puertos import CuotaExcedida, ErrorPermanente, ErrorTransitorio
 from app.reloj import RelojFalso
 from app.reservas import SolicitudReserva, event_id_para, reservar
 from app.simulador.calendario_falso import CalendarioFalso
-from app.worker import Worker
+from app.worker import MAX_INTENTOS, Worker, _jitter_aleatorio, espera_backoff
 from sqlalchemy import Engine, select
 
 from tests.integration.conftest import AHORA, MensajeriaRegistro, con_domicilio, local
@@ -216,3 +217,71 @@ async def test_el_bucle_sobrevive_a_errores_inesperados(ent: Entorno) -> None:
     parar.set()
     await asyncio.wait_for(tarea, timeout=5)
     assert llamadas["n"] >= 2
+
+
+# --- TASK-18: backoff con jitter, límite de intentos y pausa por cuota ---
+def test_espera_backoff_crece_y_tiene_tope() -> None:
+    assert [espera_backoff(n, 0.0) for n in (1, 2, 3, 6, 7, 10)] == [2, 4, 8, 64, 64, 64]
+    assert espera_backoff(1, 0.5) == 2.5
+
+
+def test_jitter_por_defecto_esta_entre_0_y_1(ent: Entorno) -> None:
+    valores = [_jitter_aleatorio() for _ in range(50)]
+    assert all(0.0 <= v <= 1.0 for v in valores)
+
+
+def test_error_transitorio_reintenta_con_backoff(ent: Entorno) -> None:
+    ent.conversacion()
+    r = ent.reservar()
+    ent.calendario.programar_fallo("crear_evento", ErrorTransitorio("503"))
+    ent.worker.procesar_uno()
+    trabajo = ent.trabajo()
+    assert trabajo.estado == "PENDIENTE"
+    assert trabajo.intentos == 1
+    assert trabajo.proxima_ejecucion == AHORA + timedelta(seconds=3)
+    assert ent.reserva(r.id).estado == "PENDIENTE"
+    assert ent.worker.procesar_uno() is False  # todavía no es la hora
+    ent.reloj.avanzar(seconds=3)
+    assert ent.worker.procesar_uno() is True
+    assert ent.reserva(r.id).estado == "CONFIRMADA"
+    assert len(ent.calendario.eventos_activos()) == 1
+
+
+def test_cuota_agotada_reintenta_pausa_la_cola_y_termina_con_un_solo_evento(ent: Entorno) -> None:
+    ent.conversacion()
+    r = ent.reservar()
+    ent.calendario.programar_fallo("crear_evento", CuotaExcedida("429 usageLimits"))
+    ent.worker.procesar_uno()
+    pausa = pausada_hasta(ent.engine, CAL)
+    assert pausa == AHORA + timedelta(seconds=3)
+    assert ent.worker.procesar_uno() is False  # pausada
+    ent.reloj.avanzar(seconds=3)
+    assert ent.worker.procesar_uno() is True
+    assert ent.reserva(r.id).estado == "CONFIRMADA"
+    assert len(ent.calendario.eventos_activos()) == 1
+    assert ent.calendario.llamadas["crear_evento"] == 2
+
+
+def test_agotados_los_intentos_el_trabajo_falla_y_libera(ent: Entorno) -> None:
+    ent.conversacion()
+    r = ent.reservar()
+    ent.calendario.programar_fallo("crear_evento", ErrorTransitorio("503"), veces=MAX_INTENTOS)
+    for _ in range(MAX_INTENTOS):
+        ent.reloj.avanzar(seconds=100)
+        assert ent.worker.procesar_uno() is True
+    assert ent.trabajo().estado == "FALLIDA"
+    assert ent.trabajo().intentos == MAX_INTENTOS
+    assert ent.reserva(r.id).estado == "FALLIDA"
+    assert ent.bloques() == 0
+    assert "ya no está libre" in ent.mensajeria.enviados[-1][1]
+    assert ent.calendario.llamadas["crear_evento"] == MAX_INTENTOS
+
+
+def test_error_permanente_no_reintenta(ent: Entorno) -> None:
+    ent.conversacion()
+    r = ent.reservar()
+    ent.calendario.programar_fallo("crear_evento", ErrorPermanente("400"))
+    ent.worker.procesar_uno()
+    assert ent.trabajo().estado == "FALLIDA"
+    assert ent.trabajo().intentos == 1
+    assert ent.reserva(r.id).estado == "FALLIDA"
