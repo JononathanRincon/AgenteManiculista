@@ -166,7 +166,7 @@
 ## Bloque 3 — Caché (Fase 5)
 *Skills:* `incremental-implementation`, `test-driven-development`, `source-driven-development`
 
-- [ ] **TASK-12** · Implementar el caché de disponibilidad con TTL, métricas e invalidación
+- [x] **TASK-12** · Implementar el caché de disponibilidad con TTL, métricas e invalidación
   - Objetivo: hit/miss, TTL configurable e invalidación por día.
   - Trazabilidad: US-02, EARS-CAC-01, EARS-CAC-06, NFR-REN-02 · Plan: 5.1
   - Diseño: design.md §1.5, §B3.2, §B3.4
